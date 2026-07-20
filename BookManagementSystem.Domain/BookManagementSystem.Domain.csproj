@@ -22,8 +22,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Contracts\Contracts.csproj" />
-    <ProjectReference Include="..\BookManagementSystem.Database\Database.csproj" />
-    <ProjectReference Include="..\BookManagementSystem.Shared\Shared.csproj" />
+    <ProjectReference Include="..\Database\Database.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 
 </Project>

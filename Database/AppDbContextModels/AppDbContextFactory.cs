@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace BookManagementSystem.Database.AppDbContextModels;
+namespace Database.AppDbContextModels;
 
 public class AppDbContextFactory
     : IDesignTimeDbContextFactory<AppDbContext>
