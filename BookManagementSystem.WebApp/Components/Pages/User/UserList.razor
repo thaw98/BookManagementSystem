@@ -1,0 +1,157 @@
+@page "/users"
+@attribute [Authorize(Roles = "Admin")]
+@inject ApiClient Api
+
+<PageTitle>Users</PageTitle>
+
+<h1>Users</h1>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-info">@Message</div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4"><input class="form-control" placeholder="Filter by email" @bind="EmailFilter" @bind:event="oninput" /></div>
+    <div class="col-md-3">
+        <select class="form-select" @bind="RoleFilter">
+            <option value="">All roles</option>
+            @foreach (var role in Roles)
+            {
+                <option value="@role.Name">@role.Name</option>
+            }
+        </select>
+    </div>
+</div>
+
+<EditForm Model="Form" OnValidSubmit="SaveAsync" class="row g-2 mb-4">
+    <DataAnnotationsValidator />
+    <div class="col-md-3"><InputText class="form-control" placeholder="Email" @bind-Value="Form.Email" /></div>
+    <div class="col-md-2">
+        <InputSelect class="form-select" @bind-Value="Form.RoleId">
+            @foreach (var role in Roles)
+            {
+                <option value="@role.Id">@role.Name</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="col-md-2"><InputText class="form-control" placeholder="Password" @bind-Value="Form.Password" type="password" /></div>
+    <div class="col-md-2 form-check pt-2">
+        <InputCheckbox class="form-check-input" @bind-Value="Form.IsActive" />
+        <label class="form-check-label">Active</label>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-outline-secondary" type="button" @onclick="Clear">Clear</button>
+    </div>
+</EditForm>
+
+<table class="table table-sm table-hover">
+    <thead><tr><th>Email</th><th>Role</th><th>Active</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var user in FilteredUsers)
+        {
+            <tr>
+                <td>@user.Email</td>
+                <td>@user.RoleName</td>
+                <td>@(user.IsActive ? "Yes" : "No")</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(user)">Edit</button>
+                    <button class="btn btn-sm btn-outline-warning" @onclick="() => ResetPasswordAsync(user.Id)">Reset Password</button>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(user.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<UserListDto> Users { get; set; } = [];
+    private List<RoleListDto> Roles { get; set; } = [];
+    private UserForm Form { get; set; } = new();
+    private string? EmailFilter { get; set; }
+    private string? RoleFilter { get; set; }
+    private string? Message { get; set; }
+
+    private IEnumerable<UserListDto> FilteredUsers => Users.Where(x =>
+        (string.IsNullOrWhiteSpace(EmailFilter) || x.Email.Contains(EmailFilter, StringComparison.OrdinalIgnoreCase)) &&
+        (string.IsNullOrWhiteSpace(RoleFilter) || x.RoleName == RoleFilter));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRolesAsync();
+        await LoadUsersAsync();
+        Form.RoleId = Roles.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        var result = await Api.GetAsync<List<UserListDto>>("api/User");
+        Users = result.Data ?? [];
+        Message = result.IsSuccess ? Message : result.Message;
+    }
+
+    private async Task LoadRolesAsync()
+    {
+        var result = await Api.GetAsync<List<RoleListDto>>("api/Role");
+        Roles = result.Data ?? [];
+    }
+
+    private void Edit(UserListDto user)
+    {
+        Form = new UserForm { Id = user.Id, Email = user.Email, RoleId = user.RoleId, IsActive = user.IsActive };
+    }
+
+    private void Clear() => Form = new UserForm { RoleId = Roles.FirstOrDefault()?.Id ?? 0, IsActive = true };
+
+    private async Task SaveAsync()
+    {
+        if (Form.Id == 0)
+        {
+            var result = await Api.PostAsync<long>("api/User", new CreateUserRequest
+            {
+                Email = Form.Email,
+                Password = Form.Password,
+                RoleId = Form.RoleId,
+                IsActive = Form.IsActive
+            });
+            Message = result.Message;
+        }
+        else
+        {
+            var result = await Api.PutAsync<UserDetailDto>($"api/User/{Form.Id}", new UpdateUserRequest
+            {
+                Email = Form.Email,
+                RoleId = Form.RoleId,
+                IsActive = Form.IsActive
+            });
+            Message = result.Message;
+        }
+
+        Clear();
+        await LoadUsersAsync();
+    }
+
+    private async Task ResetPasswordAsync(long id)
+    {
+        var password = string.IsNullOrWhiteSpace(Form.Password) ? "password123" : Form.Password;
+        var result = await Api.PostAsync<bool>($"api/User/{id}/ResetPassword", new ResetPasswordRequest { Password = password });
+        Message = result.Message;
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result = await Api.DeleteAsync<bool>($"api/User/{id}");
+        Message = result.Message;
+        await LoadUsersAsync();
+    }
+
+    private sealed class UserForm
+    {
+        public long Id { get; set; }
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public long RoleId { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}
