@@ -14,7 +14,7 @@ public class AppDbContextFactory
             "port=3306;" +
             "database=book_management_system;" +
             "user=root;" +
-            "password=root;";
+            "password=172005;";
 
         var optionsBuilder =
             new DbContextOptionsBuilder<AppDbContext>();

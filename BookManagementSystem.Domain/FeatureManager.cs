@@ -1,4 +1,7 @@
 using BookManagementSystem.Domain.Features.AuthFeature;
+using BookManagementSystem.Domain.Features.AuthorFeature;
+using BookManagementSystem.Domain.Features.CategoryFeature;
+using BookManagementSystem.Domain.Features.BookFeature;
 using BookManagementSystem.Domain.Features.RoleFeature;
 using BookManagementSystem.Domain.Features.UserFeature;
 using BookManagementSystem.Domain.Seeding;
@@ -13,6 +16,9 @@ public static class FeatureManager
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IBaseService, BaseService>();
+        services.AddScoped<IAuthorService, AuthorService>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IBookService, BookService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
