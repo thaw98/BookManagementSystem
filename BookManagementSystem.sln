@@ -5,11 +5,11 @@ VisualStudioVersion = 17.14.37411.7 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookManagementSystem.Domain", "BookManagementSystem.Domain\BookManagementSystem.Domain.csproj", "{A96F319E-7949-4439-B0F5-91A6F1CC771A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Database", "BookManagementSystem.Database\Database.csproj", "{FAAF35E8-444D-430A-BB8D-23BF8D7A3A7B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Database", "Database\Database.csproj", "{FAAF35E8-444D-430A-BB8D-23BF8D7A3A7B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contracts", "Contracts\Contracts.csproj", "{E323FDB1-7C23-4964-A6EC-83A09B405FF5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "BookManagementSystem.Shared\Shared.csproj", "{A9E68322-415C-42B3-A18D-713629C7A586}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{A9E68322-415C-42B3-A18D-713629C7A586}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp", "BookManagementSystem.WebApp\WebApp.csproj", "{37EF5148-755F-4F0E-8CF9-FE716715C09D}"
 EndProject

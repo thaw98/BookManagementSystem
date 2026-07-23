@@ -1,0 +1,109 @@
+@page "/roles"
+@attribute [Authorize(Roles = "Admin")]
+@inject ApiClient Api
+
+<PageTitle>Roles</PageTitle>
+
+<h1>Roles</h1>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-info">@Message</div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Filter by name" @bind="Filter" @bind:event="oninput" />
+    </div>
+</div>
+
+<EditForm Model="Form" OnValidSubmit="SaveAsync" class="row g-2 mb-4">
+    <DataAnnotationsValidator />
+    <div class="col-md-3"><InputText class="form-control" placeholder="Name" @bind-Value="Form.Name" disabled="@EditingProtectedName" /></div>
+    <div class="col-md-5"><InputText class="form-control" placeholder="Description" @bind-Value="Form.Description" /></div>
+    <div class="col-md-4">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-outline-secondary" type="button" @onclick="Clear">Clear</button>
+    </div>
+</EditForm>
+
+<table class="table table-sm table-hover">
+    <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var role in FilteredRoles)
+        {
+            <tr>
+                <td>@role.Name</td>
+                <td>@role.Description</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(role)">Edit</button>
+                    <button class="btn btn-sm btn-outline-danger" disabled="@role.IsProtected" @onclick="() => DeleteAsync(role.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<RoleListDto> Roles { get; set; } = [];
+    private RoleForm Form { get; set; } = new();
+    private string? Filter { get; set; }
+    private string? Message { get; set; }
+    private bool EditingProtectedName => Form.Id is 1 or 2 or 3;
+
+    private IEnumerable<RoleListDto> FilteredRoles =>
+        Roles.Where(x => string.IsNullOrWhiteSpace(Filter) || x.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<List<RoleListDto>>("api/Role");
+        Roles = result.Data ?? [];
+        Message = result.IsSuccess ? null : result.Message;
+    }
+
+    private void Edit(RoleListDto role)
+    {
+        Form = new RoleForm { Id = role.Id, Name = role.Name, Description = role.Description };
+    }
+
+    private void Clear() => Form = new RoleForm();
+
+    private async Task SaveAsync()
+    {
+        var succeeded = false;
+        if (Form.Id == 0)
+        {
+            var result = await Api.PostAsync<long>("api/Role", new CreateRoleRequest { Name = Form.Name, Description = Form.Description });
+            Message = result.Message;
+            succeeded = result.IsSuccess;
+        }
+        else
+        {
+            var result = await Api.PutAsync<RoleDetailDto>($"api/Role/{Form.Id}", new UpdateRoleRequest { Name = Form.Name, Description = Form.Description });
+            Message = result.Message;
+            succeeded = result.IsSuccess;
+        }
+
+        if (succeeded)
+        {
+            Clear();
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result = await Api.DeleteAsync<bool>($"api/Role/{id}");
+        Message = result.Message;
+        await LoadAsync();
+    }
+
+    private sealed class RoleForm
+    {
+        public long Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+    }
+}

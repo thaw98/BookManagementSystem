@@ -1,0 +1,23 @@
+<div class="modal-backdrop fade show"></div>
+<div class="modal d-block" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Title</h5>
+                <button type="button" class="btn-close" @onclick="() => OnCancel.InvokeAsync()"></button>
+            </div>
+            <div class="modal-body">@Message</div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+                <button class="btn btn-danger" @onclick="() => OnConfirm.InvokeAsync()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public string Message { get; set; } = "Are you sure?";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}
