@@ -13,7 +13,7 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Description).HasMaxLength(255);
-        builder.HasIndex(x => x.Name).IsUnique();
+        builder.HasIndex(x => x.Name);
 
         var stamp = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
         builder.HasData(

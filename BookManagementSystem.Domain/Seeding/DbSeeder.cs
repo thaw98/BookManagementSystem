@@ -11,14 +11,12 @@ public sealed class DbSeeder(AppDbContext db, IPasswordHasher passwordHasher, IL
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         var email = "admin@bms.com";
-        var existing = await db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(x => x.Id == 1 || x.Email == email, cancellationToken);
+        var exists = await db.Users.AnyAsync(x => x.Email == email, cancellationToken);
 
-        if (existing is null)
+        if (!exists)
         {
             db.Users.Add(new User
             {
-                Id = 1,
                 RoleId = RoleNames.AdminId,
                 Email = email,
                 PasswordHash = passwordHasher.HashPassword("password123"),

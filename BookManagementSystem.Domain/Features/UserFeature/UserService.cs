@@ -56,7 +56,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.Password))
             return Result<long>.Validation("Email and password are required.");
 
-        if (await db.Users.IgnoreQueryFilters().AnyAsync(x => x.Email == email, cancellationToken))
+        if (await db.Users.AnyAsync(x => x.Email == email, cancellationToken))
             return Result<long>.Duplicate("Email already exists.");
 
         if (!await db.Roles.AnyAsync(x => x.Id == request.RoleId, cancellationToken))
@@ -88,7 +88,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         if (!await db.Roles.AnyAsync(x => x.Id == request.RoleId, cancellationToken))
             return Result<UserDetailDto>.NotFound("Role not found.");
 
-        if (await db.Users.IgnoreQueryFilters().AnyAsync(x => x.Id != id && x.Email == email, cancellationToken))
+        if (await db.Users.AnyAsync(x => x.Id != id && x.Email == email, cancellationToken))
             return Result<UserDetailDto>.Duplicate("Email already exists.");
 
         var currentUserId = baseService.UserId;

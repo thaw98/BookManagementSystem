@@ -50,7 +50,7 @@ public sealed class RoleService(AppDbContext db) : IRoleService
         if (string.IsNullOrWhiteSpace(name))
             return Result<long>.Validation("Role name is required.");
 
-        if (await db.Roles.IgnoreQueryFilters().AnyAsync(x => x.Name == name, cancellationToken))
+        if (await db.Roles.AnyAsync(x => x.Name == name, cancellationToken))
             return Result<long>.Duplicate("Role name already exists.");
 
         var role = new Role { Name = name, Description = CleanDescription(request.Description) };
@@ -72,7 +72,7 @@ public sealed class RoleService(AppDbContext db) : IRoleService
         if (RoleNames.IsProtected(id) && name != role.Name)
             return Result<RoleDetailDto>.Validation("Built-in role names cannot be changed.");
 
-        if (!RoleNames.IsProtected(id) && await db.Roles.IgnoreQueryFilters().AnyAsync(x => x.Id != id && x.Name == name, cancellationToken))
+        if (!RoleNames.IsProtected(id) && await db.Roles.AnyAsync(x => x.Id != id && x.Name == name, cancellationToken))
             return Result<RoleDetailDto>.Duplicate("Role name already exists.");
 
         role.Name = RoleNames.IsProtected(id) ? role.Name : name;
@@ -90,7 +90,7 @@ public sealed class RoleService(AppDbContext db) : IRoleService
         if (role is null)
             return Result<bool>.NotFound();
 
-        var hasUsers = await db.Users.IgnoreQueryFilters().AnyAsync(x => x.RoleId == id, cancellationToken);
+        var hasUsers = await db.Users.AnyAsync(x => x.RoleId == id, cancellationToken);
         if (hasUsers)
             return Result<bool>.Validation("This role is assigned to one or more users and cannot be deleted.");
 
