@@ -1,0 +1,219 @@
+﻿@page "/authors"
+@attribute [Authorize(Roles = "Librarian")]
+@inject ApiClient Api
+
+<PageTitle>Authors</PageTitle>
+
+<h1>Authors</h1>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-info">
+        @Message
+    </div>
+}
+
+<EditForm Model="Form"
+          OnValidSubmit="SaveAsync"
+          class="row g-2 mb-4">
+
+    <DataAnnotationsValidator />
+
+    <div class="col-md-6">
+        <InputText class="form-control"
+                   placeholder="Author name"
+                   @bind-Value="Form.Name" />
+    </div>
+
+    <div class="col-md-6">
+        <button class="btn btn-primary"
+                type="submit">
+            @(Form.Id == 0 ? "Create" : "Update")
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                type="button"
+                @onclick="Clear">
+            Clear
+        </button>
+    </div>
+
+</EditForm>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input class="form-control"
+               placeholder="Search author"
+               @bind="SearchText"
+               @bind:event="oninput" />
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <p>Loading authors...</p>
+}
+else if (!FilteredAuthors.Any())
+{
+    <div class="alert alert-secondary">
+        No authors found.
+    </div>
+}
+else
+{
+    <table class="table table-sm table-hover">
+
+        <thead>
+            <tr>
+                <th>Author Name</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var author in FilteredAuthors)
+            {
+                <tr>
+                    <td>@author.Name</td>
+
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => Edit(author)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => DeleteAsync(author.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+}
+
+@code {
+    private List<AuthorDto> Authors { get; set; } = [];
+
+    private AuthorForm Form { get; set; } = new();
+
+    private string? SearchText { get; set; }
+
+    private string? Message { get; set; }
+
+    private bool IsLoading { get; set; }
+
+    private IEnumerable<AuthorDto> FilteredAuthors =>
+        Authors.Where(x =>
+            string.IsNullOrWhiteSpace(SearchText) ||
+            x.Name.Contains(
+                SearchText,
+                StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthorsAsync();
+    }
+
+    private async Task LoadAuthorsAsync()
+    {
+        IsLoading = true;
+
+        var result =
+            await Api.GetAsync<List<AuthorDto>>("api/Author");
+
+        Authors = result.Data ?? [];
+
+        if (!result.IsSuccess)
+        {
+            Message = result.Message;
+        }
+
+        IsLoading = false;
+    }
+
+    private void Edit(AuthorDto author)
+    {
+        Form = new AuthorForm
+        {
+            Id = author.Id,
+            Name = author.Name
+        };
+
+        Message = null;
+    }
+
+    private void Clear()
+    {
+        Form = new AuthorForm();
+        Message = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Form.Name))
+        {
+            Message = "Author name is required.";
+            return;
+        }
+
+        if (Form.Id == 0)
+        {
+            var result = await Api.PostAsync<long>(
+                "api/Author",
+                new CreateAuthorRequest
+                {
+                    Name = Form.Name
+                });
+
+            Message = result.Message;
+
+            if (!result.IsSuccess)
+            {
+                return;
+            }
+        }
+        else
+        {
+            var result = await Api.PutAsync<AuthorDto>(
+                $"api/Author/{Form.Id}",
+                new UpdateAuthorRequest
+                {
+                    Name = Form.Name
+                });
+
+            Message = result.Message;
+
+            if (!result.IsSuccess)
+            {
+                return;
+            }
+        }
+
+        Form = new AuthorForm();
+
+        await LoadAuthorsAsync();
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result =
+            await Api.DeleteAsync<bool>($"api/Author/{id}");
+
+        Message = result.Message;
+
+        if (result.IsSuccess)
+        {
+            await LoadAuthorsAsync();
+        }
+    }
+
+    private sealed class AuthorForm
+    {
+        public long Id { get; set; }
+
+        public string Name { get; set; } = "";
+    }
+}

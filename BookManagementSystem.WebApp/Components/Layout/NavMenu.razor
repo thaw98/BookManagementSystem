@@ -28,5 +28,30 @@
                 </div>
             </Authorized>
         </AuthorizeView>
+        <AuthorizeView Roles="Librarian">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="authors">
+                        <span class="bi bi-person-fill"
+                              aria-hidden="true"></span>
+                        Authors
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="categories">
+                        <span class="bi bi-tags-fill"
+                              aria-hidden="true"></span>
+                        Categories
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="books">
+                        <span class="bi bi-list-nested-nav-menu"
+                              aria-hidden="true"></span>
+                        Books
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>

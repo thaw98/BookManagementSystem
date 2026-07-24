@@ -1,0 +1,219 @@
+﻿@page "/categories"
+@attribute [Authorize(Roles = "Librarian")]
+@inject ApiClient Api
+
+<PageTitle>Categories</PageTitle>
+
+<h1>Categories</h1>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-info">
+        @Message
+    </div>
+}
+
+<EditForm Model="Form"
+          OnValidSubmit="SaveAsync"
+          class="row g-2 mb-4">
+
+    <DataAnnotationsValidator />
+
+    <div class="col-md-6">
+        <InputText class="form-control"
+                   placeholder="Category name"
+                   @bind-Value="Form.Name" />
+    </div>
+
+    <div class="col-md-6">
+        <button class="btn btn-primary"
+                type="submit">
+            @(Form.Id == 0 ? "Create" : "Update")
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                type="button"
+                @onclick="Clear">
+            Clear
+        </button>
+    </div>
+
+</EditForm>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input class="form-control"
+               placeholder="Search category"
+               @bind="SearchText"
+               @bind:event="oninput" />
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <p>Loading categories...</p>
+}
+else if (!FilteredCategories.Any())
+{
+    <div class="alert alert-secondary">
+        No categories found.
+    </div>
+}
+else
+{
+    <table class="table table-sm table-hover">
+
+        <thead>
+            <tr>
+                <th>Category Name</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var category in FilteredCategories)
+            {
+                <tr>
+                    <td>@category.Name</td>
+
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => Edit(category)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => DeleteAsync(category.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+}
+
+@code {
+    private List<CategoryDto> Categories { get; set; } = [];
+
+    private CategoryForm Form { get; set; } = new();
+
+    private string? SearchText { get; set; }
+
+    private string? Message { get; set; }
+
+    private bool IsLoading { get; set; }
+
+    private IEnumerable<CategoryDto> FilteredCategories =>
+        Categories.Where(x =>
+            string.IsNullOrWhiteSpace(SearchText) ||
+            x.Name.Contains(
+                SearchText,
+                StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        IsLoading = true;
+
+        var result =
+            await Api.GetAsync<List<CategoryDto>>("api/Category");
+
+        Categories = result.Data ?? [];
+
+        if (!result.IsSuccess)
+        {
+            Message = result.Message;
+        }
+
+        IsLoading = false;
+    }
+
+    private void Edit(CategoryDto category)
+    {
+        Form = new CategoryForm
+        {
+            Id = category.Id,
+            Name = category.Name
+        };
+
+        Message = null;
+    }
+
+    private void Clear()
+    {
+        Form = new CategoryForm();
+        Message = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Form.Name))
+        {
+            Message = "Category name is required.";
+            return;
+        }
+
+        if (Form.Id == 0)
+        {
+            var result = await Api.PostAsync<long>(
+                "api/Category",
+                new CreateCategoryRequest
+                {
+                    Name = Form.Name
+                });
+
+            Message = result.Message;
+
+            if (!result.IsSuccess)
+            {
+                return;
+            }
+        }
+        else
+        {
+            var result = await Api.PutAsync<CategoryDto>(
+                $"api/Category/{Form.Id}",
+                new UpdateCategoryRequest
+                {
+                    Name = Form.Name
+                });
+
+            Message = result.Message;
+
+            if (!result.IsSuccess)
+            {
+                return;
+            }
+        }
+
+        Form = new CategoryForm();
+
+        await LoadCategoriesAsync();
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result =
+            await Api.DeleteAsync<bool>($"api/Category/{id}");
+
+        Message = result.Message;
+
+        if (result.IsSuccess)
+        {
+            await LoadCategoriesAsync();
+        }
+    }
+
+    private sealed class CategoryForm
+    {
+        public long Id { get; set; }
+
+        public string Name { get; set; } = "";
+    }
+}

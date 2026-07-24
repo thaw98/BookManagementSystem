@@ -1,0 +1,400 @@
+﻿@page "/books"
+@attribute [Authorize(Roles = "Librarian")]
+@inject ApiClient Api
+
+<PageTitle>Books</PageTitle>
+
+<h1>Books</h1>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-info">
+        @Message
+    </div>
+}
+
+<!-- Search and filter section -->
+<div class="row g-2 mb-3">
+
+    <div class="col-md-3">
+        <input class="form-control"
+               placeholder="Search by book title"
+               @bind="TitleFilter"
+               @bind:event="oninput" />
+    </div>
+
+    <div class="col-md-3">
+        <input class="form-control"
+               placeholder="Search by author"
+               @bind="AuthorFilter"
+               @bind:event="oninput" />
+    </div>
+
+    <div class="col-md-3">
+        <select class="form-select"
+                @bind="CategoryFilter">
+
+            <option value="0">All categories</option>
+
+            @foreach (var category in Categories)
+            {
+                <option value="@category.Id">
+                    @category.Name
+                </option>
+            }
+
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <button class="btn btn-primary"
+                type="button"
+                @onclick="LoadBooksAsync">
+            Search
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                type="button"
+                @onclick="ClearFiltersAsync">
+            Clear
+        </button>
+    </div>
+
+</div>
+
+<!-- Create and update form -->
+<EditForm Model="Form"
+          OnValidSubmit="SaveAsync"
+          class="row g-2 mb-4">
+
+    <DataAnnotationsValidator />
+
+    <div class="col-md-3">
+        <InputText class="form-control"
+                   placeholder="Book title"
+                   @bind-Value="Form.Title" />
+    </div>
+
+    <div class="col-md-2">
+        <InputSelect class="form-select"
+                     @bind-Value="Form.AuthorId">
+
+            <option value="0">Select author</option>
+
+            @foreach (var author in Authors)
+            {
+                <option value="@author.Id">
+                    @author.Name
+                </option>
+            }
+
+        </InputSelect>
+    </div>
+
+    <div class="col-md-2">
+        <InputSelect class="form-select"
+                     @bind-Value="Form.CategoryId">
+
+            <option value="0">Select category</option>
+
+            @foreach (var category in Categories)
+            {
+                <option value="@category.Id">
+                    @category.Name
+                </option>
+            }
+
+        </InputSelect>
+    </div>
+
+    <div class="col-md-2">
+        <InputNumber class="form-control"
+                     placeholder="Copy count"
+                     @bind-Value="Form.TotalCopies" />
+    </div>
+
+    <div class="col-md-3">
+        <button class="btn btn-primary"
+                type="submit">
+            @(Form.Id == 0 ? "Create" : "Update")
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                type="button"
+                @onclick="ClearForm">
+            Clear
+        </button>
+    </div>
+
+</EditForm>
+
+@if (IsLoading)
+{
+    <p>Loading books...</p>
+}
+else if (Books.Count == 0)
+{
+    <div class="alert alert-secondary">
+        No books found.
+    </div>
+}
+else
+{
+    <table class="table table-sm table-hover">
+
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Category</th>
+                <th>Total Copies</th>
+                <th>Available Copies</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var book in Books)
+            {
+                <tr>
+                    <td>@book.Title</td>
+                    <td>@book.AuthorName</td>
+                    <td>@book.CategoryName</td>
+                    <td>@book.TotalCopies</td>
+                    <td>@book.AvailableCopies</td>
+
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => Edit(book)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => DeleteAsync(book.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+}
+
+@code {
+    private List<BookListDto> Books { get; set; } = [];
+
+    private List<AuthorDto> Authors { get; set; } = [];
+
+    private List<CategoryDto> Categories { get; set; } = [];
+
+    private BookForm Form { get; set; } = new();
+
+    private string? TitleFilter { get; set; }
+
+    private string? AuthorFilter { get; set; }
+
+    private long CategoryFilter { get; set; }
+
+    private string? Message { get; set; }
+
+    private bool IsLoading { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthorsAsync();
+        await LoadCategoriesAsync();
+        await LoadBooksAsync();
+    }
+
+    private async Task LoadBooksAsync()
+    {
+        IsLoading = true;
+
+        var queryParameters = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(TitleFilter))
+        {
+            queryParameters.Add(
+                $"title={Uri.EscapeDataString(TitleFilter.Trim())}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(AuthorFilter))
+        {
+            queryParameters.Add(
+                $"author={Uri.EscapeDataString(AuthorFilter.Trim())}");
+        }
+
+        if (CategoryFilter > 0)
+        {
+            queryParameters.Add(
+                $"categoryId={CategoryFilter}");
+        }
+
+        var url = "api/Book";
+
+        if (queryParameters.Count > 0)
+        {
+            url += "?" + string.Join("&", queryParameters);
+        }
+
+        var result =
+            await Api.GetAsync<List<BookListDto>>(url);
+
+        Books = result.Data ?? [];
+
+        if (!result.IsSuccess)
+        {
+            Message = result.Message;
+        }
+
+        IsLoading = false;
+    }
+
+    private async Task LoadAuthorsAsync()
+    {
+        var result =
+            await Api.GetAsync<List<AuthorDto>>("api/Author");
+
+        Authors = result.Data ?? [];
+
+        if (!result.IsSuccess)
+        {
+            Message = result.Message;
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var result =
+            await Api.GetAsync<List<CategoryDto>>("api/Category");
+
+        Categories = result.Data ?? [];
+
+        if (!result.IsSuccess)
+        {
+            Message = result.Message;
+        }
+    }
+
+    private void Edit(BookListDto book)
+    {
+        Form = new BookForm
+        {
+            Id = book.Id,
+            Title = book.Title,
+            AuthorId = book.AuthorId,
+            CategoryId = book.CategoryId,
+            TotalCopies = book.TotalCopies
+        };
+
+        Message = null;
+    }
+
+    private void ClearForm()
+    {
+        Form = new BookForm();
+        Message = null;
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        TitleFilter = null;
+        AuthorFilter = null;
+        CategoryFilter = 0;
+
+        await LoadBooksAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Form.Title))
+        {
+            Message = "Book title is required.";
+            return;
+        }
+
+        if (Form.AuthorId <= 0)
+        {
+            Message = "Please select an author.";
+            return;
+        }
+
+        if (Form.CategoryId <= 0)
+        {
+            Message = "Please select a category.";
+            return;
+        }
+
+        if (Form.TotalCopies <= 0)
+        {
+            Message = "Copy count must be greater than zero.";
+            return;
+        }
+
+        var succeeded = false;
+
+        if (Form.Id == 0)
+        {
+            var result = await Api.PostAsync<long>(
+                "api/Book",
+                new CreateBookRequest
+                {
+                    Title = Form.Title,
+                    AuthorId = Form.AuthorId,
+                    CategoryId = Form.CategoryId,
+                    TotalCopies = Form.TotalCopies
+                });
+
+            Message = result.Message;
+            succeeded = result.IsSuccess;
+        }
+        else
+        {
+            var result = await Api.PutAsync<BookDetailDto>(
+                $"api/Book/{Form.Id}",
+                new UpdateBookRequest
+                {
+                    Title = Form.Title,
+                    AuthorId = Form.AuthorId,
+                    CategoryId = Form.CategoryId,
+                    TotalCopies = Form.TotalCopies
+                });
+
+            Message = result.Message;
+            succeeded = result.IsSuccess;
+        }
+
+        if (succeeded)
+        {
+            ClearForm();
+            await LoadBooksAsync();
+        }
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result =
+            await Api.DeleteAsync<bool>($"api/Book/{id}");
+
+        Message = result.Message;
+
+        if (result.IsSuccess)
+        {
+            await LoadBooksAsync();
+        }
+    }
+
+    private sealed class BookForm
+    {
+        public long Id { get; set; }
+
+        public string Title { get; set; } = "";
+
+        public long AuthorId { get; set; }
+
+        public long CategoryId { get; set; }
+
+        public int TotalCopies { get; set; }
+    }
+}
