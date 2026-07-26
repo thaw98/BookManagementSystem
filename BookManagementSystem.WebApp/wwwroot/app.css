@@ -120,6 +120,13 @@ button, input, select, textarea {
     color: var(--text);
 }
 
+.login-brand h1:focus,
+.login-brand .login-title:focus,
+.login-brand h1:focus-visible,
+.login-brand .login-title:focus-visible {
+    outline: none;
+}
+
 .login-brand p,
 .login-brand .login-subtitle {
     margin: 0;
@@ -200,6 +207,36 @@ button, input, select, textarea {
     display: flex;
     flex-direction: column;
     height: 100%;
+}
+
+/* Collapsed mini drawer: keep icons, hide labels */
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .sidebar-brand {
+    justify-content: center;
+    padding: 18px 8px 14px;
+    gap: 0;
+}
+
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .sidebar-brand > div:not(.brand-logo),
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .sidebar-nav-label {
+    display: none;
+}
+
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .bms-nav.mud-navmenu {
+    padding: 0 8px 16px !important;
+}
+
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .bms-nav .mud-nav-link {
+    justify-content: center;
+    padding: 10px 0 !important;
+}
+
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .bms-nav .mud-nav-link .mud-nav-link-icon {
+    margin-inline-end: 0 !important;
+}
+
+.bms-drawer.mud-drawer-mini.mud-drawer--closed .bms-nav .mud-nav-link.active::before {
+    top: 22%;
+    height: 56%;
 }
 
 .bms-appbar {
@@ -366,6 +403,7 @@ button, input, select, textarea {
     width: 42px;
     height: 42px;
     font-size: 1.2rem;
+    flex-shrink: 0;
 }
 
 .sidebar-brand h2 {
@@ -509,6 +547,11 @@ button, input, select, textarea {
     letter-spacing: -0.02em;
     line-height: 1.2;
     color: var(--text);
+}
+
+.page-header .page-title:focus,
+.page-header .page-title:focus-visible {
+    outline: none;
 }
 
 .page-header .page-subtitle {
