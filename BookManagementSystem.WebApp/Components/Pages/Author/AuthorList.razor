@@ -16,10 +16,8 @@
     <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
-    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
-        @(Form.Id == 0 ? "Add Author" : "Edit Author")
-    </MudText>
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <h3 class="section-title">@(Form.Id == 0 ? "Add Author" : "Edit Author")</h3>
     <EditForm Model="Form" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
         <MudGrid Spacing="2">
@@ -40,7 +38,7 @@
     </EditForm>
 </MudPaper>
 
-<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudTextField @bind-Value="SearchText"
                   Label="Search author"
                   Variant="Variant.Outlined"
@@ -57,8 +55,8 @@
 }
 else
 {
-    <MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
-        <MudTable Items="@FilteredAuthors.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+    <MudPaper Class="bms-panel" Elevation="0">
+        <MudTable Items="@FilteredAuthors.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
             <HeaderContent>
                 <MudTh>Author Name</MudTh>
                 <MudTh Style="text-align:right">Actions</MudTh>

@@ -15,42 +15,47 @@
                        Edge="Edge.Start"
                        OnClick="ToggleDrawer"
                        aria-label="Toggle menu" />
-        <div style="margin-left:8px;">
+        <div class="topbar-context">
             <div class="topbar-eyebrow">BMS</div>
             <div class="topbar-page">@_pageTitle</div>
         </div>
         <MudSpacer />
         <AuthorizeView>
             <Authorized Context="auth">
-                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <MudMenu AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight"
+                         Class="profile-menu-panel">
                     <ActivatorContent>
-                        <MudButton Variant="Variant.Text" Style="text-transform:none;">
-                            <MudAvatar Size="Size.Small" Color="Color.Primary" Style="margin-right:8px;">
+                        <MudButton Variant="Variant.Text" Class="profile-trigger">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
                                 @GetInitial(auth.User)
                             </MudAvatar>
                             <MudHidden Breakpoint="Breakpoint.Xs">
-                                <div style="text-align:left;">
-                                    <div style="font-size:0.85rem;font-weight:600;line-height:1.2;color:var(--text)">
-                                        @GetEmail(auth.User)
-                                    </div>
+                                <div class="profile-meta">
+                                    <span class="name">@GetEmail(auth.User)</span>
                                     <span class="role-badge @GetRoleCss(auth.User)">@GetRole(auth.User)</span>
                                 </div>
                             </MudHidden>
-                            <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Style="margin-left:4px;" />
+                            <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="profile-chevron" />
                         </MudButton>
                     </ActivatorContent>
                     <ChildContent>
-                        <MudMenuItem Disabled="true">
-                            <div style="font-weight:600">@GetEmail(auth.User)</div>
-                            <div style="font-size:0.8rem;color:var(--text-secondary)">@GetRole(auth.User)</div>
-                        </MudMenuItem>
-                        <MudDivider />
+                        <div class="pd-header">
+                            <MudAvatar Size="Size.Medium" Color="Color.Primary">
+                                @GetInitial(auth.User)
+                            </MudAvatar>
+                            <div class="pd-identity">
+                                <div class="pd-name">@GetEmail(auth.User)</div>
+                                <div class="pd-email">@GetRole(auth.User)</div>
+                                <span class="role-badge @GetRoleCss(auth.User)">@GetRole(auth.User)</span>
+                            </div>
+                        </div>
+                        <MudDivider Class="my-1" />
                         <form method="post" action="/account/logout">
                             <MudButton ButtonType="ButtonType.Submit"
-                                       Color="Color.Error"
                                        Variant="Variant.Text"
                                        StartIcon="@Icons.Material.Filled.Logout"
-                                       Class="mud-width-full justify-start px-4 py-2">
+                                       Class="pd-signout">
                                 Sign Out
                             </MudButton>
                         </form>

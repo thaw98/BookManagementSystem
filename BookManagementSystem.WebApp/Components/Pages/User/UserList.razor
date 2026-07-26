@@ -16,7 +16,7 @@
     <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudGrid Spacing="2">
         <MudItem xs="12" md="4">
             <MudTextField @bind-Value="EmailFilter"
@@ -44,10 +44,8 @@
     </MudGrid>
 </MudPaper>
 
-<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
-    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
-        @(Form.Id == 0 ? "Add User" : "Edit User")
-    </MudText>
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <h3 class="section-title">@(Form.Id == 0 ? "Add User" : "Edit User")</h3>
     <EditForm Model="Form" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
         <MudGrid Spacing="2">
@@ -88,8 +86,8 @@
     </EditForm>
 </MudPaper>
 
-<MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
-    <MudTable Items="@FilteredUsers.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable Items="@FilteredUsers.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
         <HeaderContent>
             <MudTh>Email</MudTh>
             <MudTh>Role</MudTh>
@@ -102,9 +100,9 @@
                 <span class="role-badge @context.RoleName.ToLowerInvariant()">@context.RoleName</span>
             </MudTd>
             <MudTd DataLabel="Active">
-                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
-                    @(context.IsActive ? "Yes" : "No")
-                </MudChip>
+                <span class="status-pill @(context.IsActive ? "active" : "inactive")">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </span>
             </MudTd>
             <MudTd DataLabel="Actions" Style="text-align:right">
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />

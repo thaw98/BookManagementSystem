@@ -32,75 +32,70 @@
             @if (isAdmin)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
-                        <a href="users">
-                            <div class="stat-card-icon pink">
-                                <MudIcon Icon="@Icons.Material.Filled.Group" />
-                            </div>
-                            <MudText Typo="Typo.h6" Style="font-weight:700;">Users</MudText>
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Invite and manage librarians and members</MudText>
-                        </a>
-                    </MudPaper>
+                    <a href="users" class="dash-card">
+                        <div class="stat-card-icon pink">
+                            <MudIcon Icon="@Icons.Material.Filled.Group" />
+                        </div>
+                        <h3 class="dash-title">Users</h3>
+                        <p class="dash-desc">Invite and manage librarians and members</p>
+                    </a>
                 </MudItem>
                 <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
-                        <a href="roles">
-                            <div class="stat-card-icon purple">
-                                <MudIcon Icon="@Icons.Material.Filled.Security" />
-                            </div>
-                            <MudText Typo="Typo.h6" Style="font-weight:700;">Roles</MudText>
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Configure access roles for the system</MudText>
-                        </a>
-                    </MudPaper>
+                    <a href="roles" class="dash-card">
+                        <div class="stat-card-icon purple">
+                            <MudIcon Icon="@Icons.Material.Filled.Security" />
+                        </div>
+                        <h3 class="dash-title">Roles</h3>
+                        <p class="dash-desc">Configure access roles for the system</p>
+                    </a>
                 </MudItem>
             }
 
             @if (isLibrarian)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
-                        <a href="books">
-                            <div class="stat-card-icon blue">
-                                <MudIcon Icon="@Icons.Material.Filled.AutoStories" />
-                            </div>
-                            <MudText Typo="Typo.h6" Style="font-weight:700;">Books</MudText>
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Browse and manage the book catalog</MudText>
-                        </a>
-                    </MudPaper>
+                    <a href="books" class="dash-card">
+                        <div class="stat-card-icon blue">
+                            <MudIcon Icon="@Icons.Material.Filled.AutoStories" />
+                        </div>
+                        <h3 class="dash-title">Books</h3>
+                        <p class="dash-desc">Browse and manage the book catalog</p>
+                    </a>
                 </MudItem>
                 <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
-                        <a href="authors">
-                            <div class="stat-card-icon yellow">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" />
-                            </div>
-                            <MudText Typo="Typo.h6" Style="font-weight:700;">Authors</MudText>
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Maintain the author directory</MudText>
-                        </a>
-                    </MudPaper>
+                    <a href="authors" class="dash-card">
+                        <div class="stat-card-icon yellow">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                        </div>
+                        <h3 class="dash-title">Authors</h3>
+                        <p class="dash-desc">Maintain the author directory</p>
+                    </a>
                 </MudItem>
                 <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
-                        <a href="categories">
-                            <div class="stat-card-icon green">
-                                <MudIcon Icon="@Icons.Material.Filled.Category" />
-                            </div>
-                            <MudText Typo="Typo.h6" Style="font-weight:700;">Categories</MudText>
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Organize books by category</MudText>
-                        </a>
-                    </MudPaper>
+                    <a href="categories" class="dash-card">
+                        <div class="stat-card-icon green">
+                            <MudIcon Icon="@Icons.Material.Filled.Category" />
+                        </div>
+                        <h3 class="dash-title">Categories</h3>
+                        <p class="dash-desc">Organize books by category</p>
+                    </a>
                 </MudItem>
             }
         </MudGrid>
 
-        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
-            <MudText Typo="Typo.h6" Style="font-weight:700;" Class="mb-2">Signed in</MudText>
-            <MudText Typo="Typo.body1">
-                <strong>@email</strong>
-            </MudText>
-            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
-                Use the sidebar to navigate modules available for your role.
-            </MudText>
+        <MudPaper Class="bms-panel bms-panel-pad" Elevation="0">
+            <div class="signed-in-panel">
+                <div class="signed-in-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" />
+                </div>
+                <div>
+                    <h3 class="section-title" style="margin-bottom:6px;">Signed in</h3>
+                    <p style="margin:0;font-weight:600;">@email</p>
+                    <p class="dash-desc" style="margin-top:4px;">
+                        Use the sidebar to navigate modules available for your role.
+                    </p>
+                </div>
+            </div>
         </MudPaper>
     </Authorized>
 </AuthorizeView>

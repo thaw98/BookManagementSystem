@@ -4,13 +4,15 @@
 
 <PageTitle>Login — BMS</PageTitle>
 
-<MudPaper Class="login-card pa-8" Elevation="4" Style="border-radius:20px;">
-    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:2rem;">
-        <div class="brand-logo" style="margin-bottom:0.75rem;">
+<MudPaper Class="login-card" Elevation="0">
+    <div class="login-brand">
+        <div class="brand-logo">
             <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" />
         </div>
-        <MudText Typo="Typo.h5" Style="font-weight:800;">BMS</MudText>
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">Sign in to the Library System</MudText>
+        <div>
+            <h1 class="login-title">BMS</h1>
+            <p class="login-subtitle">Sign in to the Library System</p>
+        </div>
     </div>
 
     @if (Error == "1")
@@ -24,7 +26,7 @@
         <input type="hidden" name="returnUrl" value="@ReturnUrl" />
 
         <div class="mb-3">
-            <label for="email" style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Email</label>
+            <label for="email" class="login-label">Email</label>
             <input id="email"
                    name="email"
                    type="email"
@@ -35,7 +37,7 @@
         </div>
 
         <div class="mb-4">
-            <label for="password" style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Password</label>
+            <label for="password" class="login-label">Password</label>
             <input id="password"
                    name="password"
                    type="password"
@@ -50,7 +52,7 @@
                    Color="Color.Primary"
                    FullWidth="true"
                    Size="Size.Large"
-                   Style="font-weight:600;">
+                   Class="login-submit">
             Sign In
         </MudButton>
     </form>

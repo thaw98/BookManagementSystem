@@ -16,7 +16,7 @@
     <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudGrid Spacing="2">
         <MudItem xs="12" md="3">
             <MudTextField @bind-Value="TitleFilter"
@@ -52,10 +52,8 @@
     </MudGrid>
 </MudPaper>
 
-<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
-    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
-        @(Form.Id == 0 ? "Add Book" : "Edit Book")
-    </MudText>
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <h3 class="section-title">@(Form.Id == 0 ? "Add Book" : "Edit Book")</h3>
     <EditForm Model="Form" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
         <MudGrid Spacing="2">
@@ -115,8 +113,8 @@
 }
 else
 {
-    <MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
-        <MudTable Items="@Books" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+    <MudPaper Class="bms-panel" Elevation="0">
+        <MudTable Items="@Books" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
             <HeaderContent>
                 <MudTh>Title</MudTh>
                 <MudTh>Author</MudTh>
@@ -130,7 +128,11 @@ else
                 <MudTd DataLabel="Author">@context.AuthorName</MudTd>
                 <MudTd DataLabel="Category">@context.CategoryName</MudTd>
                 <MudTd DataLabel="Total">@context.TotalCopies</MudTd>
-                <MudTd DataLabel="Available">@context.AvailableCopies</MudTd>
+                <MudTd DataLabel="Available">
+                    <span class="avail-badge @AvailClass(context.AvailableCopies, context.TotalCopies)">
+                        @context.AvailableCopies available
+                    </span>
+                </MudTd>
                 <MudTd DataLabel="Actions" Style="text-align:right">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
@@ -291,6 +293,13 @@ else
         var result = await Api.DeleteAsync<bool>($"api/Book/{id}");
         Message = result.Message;
         if (result.IsSuccess) await LoadBooksAsync();
+    }
+
+    private static string AvailClass(int available, int total)
+    {
+        if (available <= 0) return "none";
+        if (total > 0 && available <= Math.Max(1, total / 4)) return "low";
+        return string.Empty;
     }
 
     private sealed class BookForm
