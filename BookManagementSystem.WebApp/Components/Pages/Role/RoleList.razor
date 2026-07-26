@@ -2,47 +2,84 @@
 @attribute [Authorize(Roles = "Admin")]
 @inject ApiClient Api
 
-<PageTitle>Roles</PageTitle>
+<PageTitle>Roles — BMS</PageTitle>
 
-<h1>Roles</h1>
-
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <div class="alert alert-info">@Message</div>
-}
-
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control" placeholder="Filter by name" @bind="Filter" @bind:event="oninput" />
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Roles</h1>
+        <p class="page-subtitle">Define and maintain access roles</p>
     </div>
 </div>
 
-<EditForm Model="Form" OnValidSubmit="SaveAsync" class="row g-2 mb-4">
-    <DataAnnotationsValidator />
-    <div class="col-md-3"><InputText class="form-control" placeholder="Name" @bind-Value="Form.Name" disabled="@EditingProtectedName" /></div>
-    <div class="col-md-5"><InputText class="form-control" placeholder="Description" @bind-Value="Form.Description" /></div>
-    <div class="col-md-4">
-        <button class="btn btn-primary" type="submit">Save</button>
-        <button class="btn btn-outline-secondary" type="button" @onclick="Clear">Clear</button>
-    </div>
-</EditForm>
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
+}
 
-<table class="table table-sm table-hover">
-    <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
-    <tbody>
-        @foreach (var role in FilteredRoles)
-        {
-            <tr>
-                <td>@role.Name</td>
-                <td>@role.Description</td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(role)">Edit</button>
-                    <button class="btn btn-sm btn-outline-danger" disabled="@role.IsProtected" @onclick="() => DeleteAsync(role.Id)">Delete</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudTextField @bind-Value="Filter"
+                  Label="Filter by name"
+                  Variant="Variant.Outlined"
+                  Immediate="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Margin="Margin.Dense"
+                  Style="max-width:320px;" />
+</MudPaper>
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
+        @(Form.Id == 0 ? "Add Role" : "Edit Role")
+    </MudText>
+    <EditForm Model="Form" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="Form.Name"
+                              Label="Name"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Disabled="@EditingProtectedName" />
+            </MudItem>
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="Form.Description"
+                              Label="Description"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex align-center gap-2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Clear">Clear</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+<MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+    <MudTable Items="@FilteredRoles.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Description</MudTh>
+            <MudTh Style="text-align:right">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Description">@context.Description</MudTd>
+            <MudTd DataLabel="Actions" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               Disabled="@context.IsProtected"
+                               OnClick="() => DeleteAsync(context.Id)"
+                               aria-label="Delete" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">No roles found.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
 
 @code {
     private List<RoleListDto> Roles { get; set; } = [];

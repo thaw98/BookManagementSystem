@@ -1,13 +1,116 @@
 @page "/"
 @attribute [Authorize]
 
-<PageTitle>Home</PageTitle>
-
-<h1>Book Management System</h1>
+<PageTitle>Dashboard — BMS</PageTitle>
 
 <AuthorizeView>
     <Authorized>
-        <p>Signed in as <strong>@context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value</strong></p>
-        <p>Role: <strong>@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</strong></p>
+        @{
+            var email = context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "User";
+            var role = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
+            var display = email.Contains('@') ? email[..email.IndexOf('@')] : email;
+            var isAdmin = context.User.IsInRole("Admin");
+            var isLibrarian = context.User.IsInRole("Librarian");
+            var subtitle = role switch
+            {
+                "Admin" => "Manage your library team and oversee all activity.",
+                "Librarian" => "Manage the collection and keep the catalog up to date.",
+                _ => "Welcome to the Book Management System."
+            };
+        }
+
+        <div class="page-header">
+            <div>
+                <div class="greeting">@Greeting()</div>
+                <h1 class="page-title">@display</h1>
+                <p class="page-subtitle">@subtitle</p>
+            </div>
+            <span class="role-badge @role.ToLowerInvariant()">@role</span>
+        </div>
+
+        <MudGrid Spacing="3" Class="mb-6">
+            @if (isAdmin)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
+                        <a href="users">
+                            <div class="stat-card-icon pink">
+                                <MudIcon Icon="@Icons.Material.Filled.Group" />
+                            </div>
+                            <MudText Typo="Typo.h6" Style="font-weight:700;">Users</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Invite and manage librarians and members</MudText>
+                        </a>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
+                        <a href="roles">
+                            <div class="stat-card-icon purple">
+                                <MudIcon Icon="@Icons.Material.Filled.Security" />
+                            </div>
+                            <MudText Typo="Typo.h6" Style="font-weight:700;">Roles</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Configure access roles for the system</MudText>
+                        </a>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (isLibrarian)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
+                        <a href="books">
+                            <div class="stat-card-icon blue">
+                                <MudIcon Icon="@Icons.Material.Filled.AutoStories" />
+                            </div>
+                            <MudText Typo="Typo.h6" Style="font-weight:700;">Books</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Browse and manage the book catalog</MudText>
+                        </a>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
+                        <a href="authors">
+                            <div class="stat-card-icon yellow">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                            </div>
+                            <MudText Typo="Typo.h6" Style="font-weight:700;">Authors</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Maintain the author directory</MudText>
+                        </a>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;height:100%;">
+                        <a href="categories">
+                            <div class="stat-card-icon green">
+                                <MudIcon Icon="@Icons.Material.Filled.Category" />
+                            </div>
+                            <MudText Typo="Typo.h6" Style="font-weight:700;">Categories</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Organize books by category</MudText>
+                        </a>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+
+        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+            <MudText Typo="Typo.h6" Style="font-weight:700;" Class="mb-2">Signed in</MudText>
+            <MudText Typo="Typo.body1">
+                <strong>@email</strong>
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
+                Use the sidebar to navigate modules available for your role.
+            </MudText>
+        </MudPaper>
     </Authorized>
 </AuthorizeView>
+
+@code {
+    private static string Greeting()
+    {
+        var hour = DateTime.Now.Hour;
+        if (hour < 12) return "Good morning";
+        if (hour < 17) return "Good afternoon";
+        return "Good evening";
+    }
+}

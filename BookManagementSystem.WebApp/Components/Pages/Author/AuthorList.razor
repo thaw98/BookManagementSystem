@@ -2,115 +2,92 @@
 @attribute [Authorize(Roles = "Librarian")]
 @inject ApiClient Api
 
-<PageTitle>Authors</PageTitle>
+<PageTitle>Authors — BMS</PageTitle>
 
-<h1>Authors</h1>
-
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <div class="alert alert-info">
-        @Message
-    </div>
-}
-
-<EditForm Model="Form"
-          OnValidSubmit="SaveAsync"
-          class="row g-2 mb-4">
-
-    <DataAnnotationsValidator />
-
-    <div class="col-md-6">
-        <InputText class="form-control"
-                   placeholder="Author name"
-                   @bind-Value="Form.Name" />
-    </div>
-
-    <div class="col-md-6">
-        <button class="btn btn-primary"
-                type="submit">
-            @(Form.Id == 0 ? "Create" : "Update")
-        </button>
-
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="Clear">
-            Clear
-        </button>
-    </div>
-
-</EditForm>
-
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control"
-               placeholder="Search author"
-               @bind="SearchText"
-               @bind:event="oninput" />
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Authors</h1>
+        <p class="page-subtitle">Maintain the author directory</p>
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
+}
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
+        @(Form.Id == 0 ? "Add Author" : "Edit Author")
+    </MudText>
+    <EditForm Model="Form" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="Form.Name"
+                              Label="Author name"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6" Class="d-flex align-center gap-2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                    @(Form.Id == 0 ? "Create" : "Update")
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Clear">Clear</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudTextField @bind-Value="SearchText"
+                  Label="Search author"
+                  Variant="Variant.Outlined"
+                  Immediate="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Margin="Margin.Dense"
+                  Style="max-width:320px;" />
+</MudPaper>
+
 @if (IsLoading)
 {
-    <p>Loading authors...</p>
-}
-else if (!FilteredAuthors.Any())
-{
-    <div class="alert alert-secondary">
-        No authors found.
-    </div>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
 else
 {
-    <table class="table table-sm table-hover">
-
-        <thead>
-            <tr>
-                <th>Author Name</th>
-                <th></th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var author in FilteredAuthors)
-            {
-                <tr>
-                    <td>@author.Name</td>
-
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => Edit(author)">
-                            Edit
-                        </button>
-
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(author.Id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-    </table>
+    <MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+        <MudTable Items="@FilteredAuthors.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Author Name</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Author Name">@context.Name</MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4 mud-text-secondary">No authors found.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
     private List<AuthorDto> Authors { get; set; } = [];
-
     private AuthorForm Form { get; set; } = new();
-
     private string? SearchText { get; set; }
-
     private string? Message { get; set; }
-
     private bool IsLoading { get; set; }
 
     private IEnumerable<AuthorDto> FilteredAuthors =>
         Authors.Where(x =>
             string.IsNullOrWhiteSpace(SearchText) ||
-            x.Name.Contains(
-                SearchText,
-                StringComparison.OrdinalIgnoreCase));
+            x.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -120,28 +97,15 @@ else
     private async Task LoadAuthorsAsync()
     {
         IsLoading = true;
-
-        var result =
-            await Api.GetAsync<List<AuthorDto>>("api/Author");
-
+        var result = await Api.GetAsync<List<AuthorDto>>("api/Author");
         Authors = result.Data ?? [];
-
-        if (!result.IsSuccess)
-        {
-            Message = result.Message;
-        }
-
+        if (!result.IsSuccess) Message = result.Message;
         IsLoading = false;
     }
 
     private void Edit(AuthorDto author)
     {
-        Form = new AuthorForm
-        {
-            Id = author.Id,
-            Name = author.Name
-        };
-
+        Form = new AuthorForm { Id = author.Id, Name = author.Name };
         Message = null;
     }
 
@@ -161,59 +125,31 @@ else
 
         if (Form.Id == 0)
         {
-            var result = await Api.PostAsync<long>(
-                "api/Author",
-                new CreateAuthorRequest
-                {
-                    Name = Form.Name
-                });
-
+            var result = await Api.PostAsync<long>("api/Author", new CreateAuthorRequest { Name = Form.Name });
             Message = result.Message;
-
-            if (!result.IsSuccess)
-            {
-                return;
-            }
+            if (!result.IsSuccess) return;
         }
         else
         {
-            var result = await Api.PutAsync<AuthorDto>(
-                $"api/Author/{Form.Id}",
-                new UpdateAuthorRequest
-                {
-                    Name = Form.Name
-                });
-
+            var result = await Api.PutAsync<AuthorDto>($"api/Author/{Form.Id}", new UpdateAuthorRequest { Name = Form.Name });
             Message = result.Message;
-
-            if (!result.IsSuccess)
-            {
-                return;
-            }
+            if (!result.IsSuccess) return;
         }
 
         Form = new AuthorForm();
-
         await LoadAuthorsAsync();
     }
 
     private async Task DeleteAsync(long id)
     {
-        var result =
-            await Api.DeleteAsync<bool>($"api/Author/{id}");
-
+        var result = await Api.DeleteAsync<bool>($"api/Author/{id}");
         Message = result.Message;
-
-        if (result.IsSuccess)
-        {
-            await LoadAuthorsAsync();
-        }
+        if (result.IsSuccess) await LoadAuthorsAsync();
     }
 
     private sealed class AuthorForm
     {
         public long Id { get; set; }
-
         public string Name { get; set; } = "";
     }
 }

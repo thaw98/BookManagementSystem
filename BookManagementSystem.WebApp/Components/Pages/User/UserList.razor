@@ -2,68 +2,121 @@
 @attribute [Authorize(Roles = "Admin")]
 @inject ApiClient Api
 
-<PageTitle>Users</PageTitle>
+<PageTitle>Users — BMS</PageTitle>
 
-<h1>Users</h1>
-
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <div class="alert alert-info">@Message</div>
-}
-
-<div class="row g-2 mb-3">
-    <div class="col-md-4"><input class="form-control" placeholder="Filter by email" @bind="EmailFilter" @bind:event="oninput" /></div>
-    <div class="col-md-3">
-        <select class="form-select" @bind="RoleFilter">
-            <option value="">All roles</option>
-            @foreach (var role in Roles)
-            {
-                <option value="@role.Name">@role.Name</option>
-            }
-        </select>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">User Management</h1>
+        <p class="page-subtitle">Invite librarians and members to the library</p>
     </div>
 </div>
 
-<EditForm Model="Form" OnValidSubmit="SaveAsync" class="row g-2 mb-4">
-    <DataAnnotationsValidator />
-    <div class="col-md-3"><InputText class="form-control" placeholder="Email" @bind-Value="Form.Email" /></div>
-    <div class="col-md-2">
-        <InputSelect class="form-select" @bind-Value="Form.RoleId">
-            @foreach (var role in Roles)
-            {
-                <option value="@role.Id">@role.Name</option>
-            }
-        </InputSelect>
-    </div>
-    <div class="col-md-2"><InputText class="form-control" placeholder="Password" @bind-Value="Form.Password" type="password" /></div>
-    <div class="col-md-2 form-check pt-2">
-        <InputCheckbox class="form-check-input" @bind-Value="Form.IsActive" />
-        <label class="form-check-label">Active</label>
-    </div>
-    <div class="col-md-3">
-        <button class="btn btn-primary" type="submit">Save</button>
-        <button class="btn btn-outline-secondary" type="button" @onclick="Clear">Clear</button>
-    </div>
-</EditForm>
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
+}
 
-<table class="table table-sm table-hover">
-    <thead><tr><th>Email</th><th>Role</th><th>Active</th><th></th></tr></thead>
-    <tbody>
-        @foreach (var user in FilteredUsers)
-        {
-            <tr>
-                <td>@user.Email</td>
-                <td>@user.RoleName</td>
-                <td>@(user.IsActive ? "Yes" : "No")</td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(user)">Edit</button>
-                    <button class="btn btn-sm btn-outline-warning" @onclick="() => ResetPasswordAsync(user.Id)">Reset Password</button>
-                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(user.Id)">Delete</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="EmailFilter"
+                          Label="Filter by email"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string"
+                       Value="@(RoleFilter ?? string.Empty)"
+                       ValueChanged="OnRoleFilterChanged"
+                       Label="Role"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+                <MudSelectItem Value="@string.Empty">All roles</MudSelectItem>
+                @foreach (var role in Roles)
+                {
+                    <MudSelectItem Value="@role.Name">@role.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
+        @(Form.Id == 0 ? "Add User" : "Edit User")
+    </MudText>
+    <EditForm Model="Form" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="Form.Email"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="long"
+                           @bind-Value="Form.RoleId"
+                           Label="Role"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    @foreach (var role in Roles)
+                    {
+                        <MudSelectItem T="long" Value="@role.Id">@role.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudTextField @bind-Value="Form.Password"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-center">
+                <MudCheckBox @bind-Value="Form.IsActive" Label="Active" Color="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12" md="3" Class="d-flex align-center gap-2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Clear">Clear</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+<MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+    <MudTable Items="@FilteredUsers.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Email</MudTh>
+            <MudTh>Role</MudTh>
+            <MudTh>Active</MudTh>
+            <MudTh Style="text-align:right">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Role">
+                <span class="role-badge @context.RoleName.ToLowerInvariant()">@context.RoleName</span>
+            </MudTd>
+            <MudTd DataLabel="Active">
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Yes" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
+                <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning" OnClick="() => ResetPasswordAsync(context.Id)" aria-label="Reset password" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">No users found.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
 
 @code {
     private List<UserListDto> Users { get; set; } = [];
@@ -95,6 +148,12 @@
     {
         var result = await Api.GetAsync<List<RoleListDto>>("api/Role");
         Roles = result.Data ?? [];
+    }
+
+    private Task OnRoleFilterChanged(string value)
+    {
+        RoleFilter = string.IsNullOrWhiteSpace(value) ? null : value;
+        return Task.CompletedTask;
     }
 
     private void Edit(UserListDto user)

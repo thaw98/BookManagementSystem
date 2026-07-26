@@ -2,30 +2,59 @@
 @layout LoginLayout
 @attribute [AllowAnonymous]
 
+<PageTitle>Login — BMS</PageTitle>
 
-<PageTitle>Login</PageTitle>
-
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h1 class="h3 mb-3">Sign in</h1>
-        @if (Error == "1")
-        {
-            <div class="alert alert-danger">Invalid email or password.</div>
-        }
-        <form method="post" action="/account/login">
-            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
-            <div class="mb-3">
-                <label class="form-label" for="email">Email</label>
-                <input class="form-control" id="email" name="email" type="email" required autocomplete="username" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label" for="password">Password</label>
-                <input class="form-control" id="password" name="password" type="password" required autocomplete="current-password" />
-            </div>
-            <button class="btn btn-primary w-100" type="submit">Login</button>
-        </form>
+<MudPaper Class="login-card pa-8" Elevation="4" Style="border-radius:20px;">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:2rem;">
+        <div class="brand-logo" style="margin-bottom:0.75rem;">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" />
+        </div>
+        <MudText Typo="Typo.h5" Style="font-weight:800;">BMS</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Sign in to the Library System</MudText>
     </div>
-</div>
+
+    @if (Error == "1")
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
+            Invalid email or password.
+        </MudAlert>
+    }
+
+    <form method="post" action="/account/login">
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+        <div class="mb-3">
+            <label for="email" style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Email</label>
+            <input id="email"
+                   name="email"
+                   type="email"
+                   class="bms-input"
+                   placeholder="you@bms.com"
+                   required
+                   autocomplete="username" />
+        </div>
+
+        <div class="mb-4">
+            <label for="password" style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Password</label>
+            <input id="password"
+                   name="password"
+                   type="password"
+                   class="bms-input"
+                   placeholder="Enter password"
+                   required
+                   autocomplete="current-password" />
+        </div>
+
+        <MudButton ButtonType="ButtonType.Submit"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Size="Size.Large"
+                   Style="font-weight:600;">
+            Sign In
+        </MudButton>
+    </form>
+</MudPaper>
 
 @code {
     [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }

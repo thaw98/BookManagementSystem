@@ -2,202 +2,156 @@
 @attribute [Authorize(Roles = "Librarian")]
 @inject ApiClient Api
 
-<PageTitle>Books</PageTitle>
+<PageTitle>Books — BMS</PageTitle>
 
-<h1>Books</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Books</h1>
+        <p class="page-subtitle">Browse and manage the book catalog</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
-    <div class="alert alert-info">
-        @Message
-    </div>
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<!-- Search and filter section -->
-<div class="row g-2 mb-3">
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="3">
+            <MudTextField @bind-Value="TitleFilter"
+                          Label="Search by title"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudTextField @bind-Value="AuthorFilter"
+                          Label="Search by author"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="long"
+                       @bind-Value="CategoryFilter"
+                       Label="Category"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+                <MudSelectItem T="long" Value="0">All categories</MudSelectItem>
+                @foreach (var category in Categories)
+                {
+                    <MudSelectItem T="long" Value="@category.Id">@category.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3" Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadBooksAsync">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
 
-    <div class="col-md-3">
-        <input class="form-control"
-               placeholder="Search by book title"
-               @bind="TitleFilter"
-               @bind:event="oninput" />
-    </div>
-
-    <div class="col-md-3">
-        <input class="form-control"
-               placeholder="Search by author"
-               @bind="AuthorFilter"
-               @bind:event="oninput" />
-    </div>
-
-    <div class="col-md-3">
-        <select class="form-select"
-                @bind="CategoryFilter">
-
-            <option value="0">All categories</option>
-
-            @foreach (var category in Categories)
-            {
-                <option value="@category.Id">
-                    @category.Name
-                </option>
-            }
-
-        </select>
-    </div>
-
-    <div class="col-md-3">
-        <button class="btn btn-primary"
-                type="button"
-                @onclick="LoadBooksAsync">
-            Search
-        </button>
-
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="ClearFiltersAsync">
-            Clear
-        </button>
-    </div>
-
-</div>
-
-<!-- Create and update form -->
-<EditForm Model="Form"
-          OnValidSubmit="SaveAsync"
-          class="row g-2 mb-4">
-
-    <DataAnnotationsValidator />
-
-    <div class="col-md-3">
-        <InputText class="form-control"
-                   placeholder="Book title"
-                   @bind-Value="Form.Title" />
-    </div>
-
-    <div class="col-md-2">
-        <InputSelect class="form-select"
-                     @bind-Value="Form.AuthorId">
-
-            <option value="0">Select author</option>
-
-            @foreach (var author in Authors)
-            {
-                <option value="@author.Id">
-                    @author.Name
-                </option>
-            }
-
-        </InputSelect>
-    </div>
-
-    <div class="col-md-2">
-        <InputSelect class="form-select"
-                     @bind-Value="Form.CategoryId">
-
-            <option value="0">Select category</option>
-
-            @foreach (var category in Categories)
-            {
-                <option value="@category.Id">
-                    @category.Name
-                </option>
-            }
-
-        </InputSelect>
-    </div>
-
-    <div class="col-md-2">
-        <InputNumber class="form-control"
-                     placeholder="Copy count"
-                     @bind-Value="Form.TotalCopies" />
-    </div>
-
-    <div class="col-md-3">
-        <button class="btn btn-primary"
-                type="submit">
-            @(Form.Id == 0 ? "Create" : "Update")
-        </button>
-
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="ClearForm">
-            Clear
-        </button>
-    </div>
-
-</EditForm>
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
+        @(Form.Id == 0 ? "Add Book" : "Edit Book")
+    </MudText>
+    <EditForm Model="Form" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="Form.Title"
+                              Label="Book title"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="long"
+                           @bind-Value="Form.AuthorId"
+                           Label="Author"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    <MudSelectItem T="long" Value="0">Select author</MudSelectItem>
+                    @foreach (var author in Authors)
+                    {
+                        <MudSelectItem T="long" Value="@author.Id">@author.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="long"
+                           @bind-Value="Form.CategoryId"
+                           Label="Category"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    <MudSelectItem T="long" Value="0">Select category</MudSelectItem>
+                    @foreach (var category in Categories)
+                    {
+                        <MudSelectItem T="long" Value="@category.Id">@category.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudNumericField @bind-Value="Form.TotalCopies"
+                                 Label="Copy count"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="1" />
+            </MudItem>
+            <MudItem xs="12" md="3" Class="d-flex align-center gap-2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                    @(Form.Id == 0 ? "Create" : "Update")
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearForm">Clear</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
 
 @if (IsLoading)
 {
-    <p>Loading books...</p>
-}
-else if (Books.Count == 0)
-{
-    <div class="alert alert-secondary">
-        No books found.
-    </div>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
 else
 {
-    <table class="table table-sm table-hover">
-
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Author</th>
-                <th>Category</th>
-                <th>Total Copies</th>
-                <th>Available Copies</th>
-                <th></th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var book in Books)
-            {
-                <tr>
-                    <td>@book.Title</td>
-                    <td>@book.AuthorName</td>
-                    <td>@book.CategoryName</td>
-                    <td>@book.TotalCopies</td>
-                    <td>@book.AvailableCopies</td>
-
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => Edit(book)">
-                            Edit
-                        </button>
-
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(book.Id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-    </table>
+    <MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+        <MudTable Items="@Books" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Author</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Total</MudTh>
+                <MudTh>Available</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Title">@context.Title</MudTd>
+                <MudTd DataLabel="Author">@context.AuthorName</MudTd>
+                <MudTd DataLabel="Category">@context.CategoryName</MudTd>
+                <MudTd DataLabel="Total">@context.TotalCopies</MudTd>
+                <MudTd DataLabel="Available">@context.AvailableCopies</MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4 mud-text-secondary">No books found.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
     private List<BookListDto> Books { get; set; } = [];
-
     private List<AuthorDto> Authors { get; set; } = [];
-
     private List<CategoryDto> Categories { get; set; } = [];
-
     private BookForm Form { get; set; } = new();
-
     private string? TitleFilter { get; set; }
-
     private string? AuthorFilter { get; set; }
-
     private long CategoryFilter { get; set; }
-
     private string? Message { get; set; }
-
     private bool IsLoading { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -210,71 +164,39 @@ else
     private async Task LoadBooksAsync()
     {
         IsLoading = true;
-
         var queryParameters = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(TitleFilter))
-        {
-            queryParameters.Add(
-                $"title={Uri.EscapeDataString(TitleFilter.Trim())}");
-        }
+            queryParameters.Add($"title={Uri.EscapeDataString(TitleFilter.Trim())}");
 
         if (!string.IsNullOrWhiteSpace(AuthorFilter))
-        {
-            queryParameters.Add(
-                $"author={Uri.EscapeDataString(AuthorFilter.Trim())}");
-        }
+            queryParameters.Add($"author={Uri.EscapeDataString(AuthorFilter.Trim())}");
 
         if (CategoryFilter > 0)
-        {
-            queryParameters.Add(
-                $"categoryId={CategoryFilter}");
-        }
+            queryParameters.Add($"categoryId={CategoryFilter}");
 
         var url = "api/Book";
-
         if (queryParameters.Count > 0)
-        {
             url += "?" + string.Join("&", queryParameters);
-        }
 
-        var result =
-            await Api.GetAsync<List<BookListDto>>(url);
-
+        var result = await Api.GetAsync<List<BookListDto>>(url);
         Books = result.Data ?? [];
-
-        if (!result.IsSuccess)
-        {
-            Message = result.Message;
-        }
-
+        if (!result.IsSuccess) Message = result.Message;
         IsLoading = false;
     }
 
     private async Task LoadAuthorsAsync()
     {
-        var result =
-            await Api.GetAsync<List<AuthorDto>>("api/Author");
-
+        var result = await Api.GetAsync<List<AuthorDto>>("api/Author");
         Authors = result.Data ?? [];
-
-        if (!result.IsSuccess)
-        {
-            Message = result.Message;
-        }
+        if (!result.IsSuccess) Message = result.Message;
     }
 
     private async Task LoadCategoriesAsync()
     {
-        var result =
-            await Api.GetAsync<List<CategoryDto>>("api/Category");
-
+        var result = await Api.GetAsync<List<CategoryDto>>("api/Category");
         Categories = result.Data ?? [];
-
-        if (!result.IsSuccess)
-        {
-            Message = result.Message;
-        }
+        if (!result.IsSuccess) Message = result.Message;
     }
 
     private void Edit(BookListDto book)
@@ -287,7 +209,6 @@ else
             CategoryId = book.CategoryId,
             TotalCopies = book.TotalCopies
         };
-
         Message = null;
     }
 
@@ -302,7 +223,6 @@ else
         TitleFilter = null;
         AuthorFilter = null;
         CategoryFilter = 0;
-
         await LoadBooksAsync();
     }
 
@@ -336,31 +256,25 @@ else
 
         if (Form.Id == 0)
         {
-            var result = await Api.PostAsync<long>(
-                "api/Book",
-                new CreateBookRequest
-                {
-                    Title = Form.Title,
-                    AuthorId = Form.AuthorId,
-                    CategoryId = Form.CategoryId,
-                    TotalCopies = Form.TotalCopies
-                });
-
+            var result = await Api.PostAsync<long>("api/Book", new CreateBookRequest
+            {
+                Title = Form.Title,
+                AuthorId = Form.AuthorId,
+                CategoryId = Form.CategoryId,
+                TotalCopies = Form.TotalCopies
+            });
             Message = result.Message;
             succeeded = result.IsSuccess;
         }
         else
         {
-            var result = await Api.PutAsync<BookDetailDto>(
-                $"api/Book/{Form.Id}",
-                new UpdateBookRequest
-                {
-                    Title = Form.Title,
-                    AuthorId = Form.AuthorId,
-                    CategoryId = Form.CategoryId,
-                    TotalCopies = Form.TotalCopies
-                });
-
+            var result = await Api.PutAsync<BookDetailDto>($"api/Book/{Form.Id}", new UpdateBookRequest
+            {
+                Title = Form.Title,
+                AuthorId = Form.AuthorId,
+                CategoryId = Form.CategoryId,
+                TotalCopies = Form.TotalCopies
+            });
             Message = result.Message;
             succeeded = result.IsSuccess;
         }
@@ -374,27 +288,17 @@ else
 
     private async Task DeleteAsync(long id)
     {
-        var result =
-            await Api.DeleteAsync<bool>($"api/Book/{id}");
-
+        var result = await Api.DeleteAsync<bool>($"api/Book/{id}");
         Message = result.Message;
-
-        if (result.IsSuccess)
-        {
-            await LoadBooksAsync();
-        }
+        if (result.IsSuccess) await LoadBooksAsync();
     }
 
     private sealed class BookForm
     {
         public long Id { get; set; }
-
         public string Title { get; set; } = "";
-
         public long AuthorId { get; set; }
-
         public long CategoryId { get; set; }
-
         public int TotalCopies { get; set; }
     }
 }

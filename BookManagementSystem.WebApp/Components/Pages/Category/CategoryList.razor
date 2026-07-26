@@ -2,115 +2,92 @@
 @attribute [Authorize(Roles = "Librarian")]
 @inject ApiClient Api
 
-<PageTitle>Categories</PageTitle>
+<PageTitle>Categories — BMS</PageTitle>
 
-<h1>Categories</h1>
-
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <div class="alert alert-info">
-        @Message
-    </div>
-}
-
-<EditForm Model="Form"
-          OnValidSubmit="SaveAsync"
-          class="row g-2 mb-4">
-
-    <DataAnnotationsValidator />
-
-    <div class="col-md-6">
-        <InputText class="form-control"
-                   placeholder="Category name"
-                   @bind-Value="Form.Name" />
-    </div>
-
-    <div class="col-md-6">
-        <button class="btn btn-primary"
-                type="submit">
-            @(Form.Id == 0 ? "Create" : "Update")
-        </button>
-
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="Clear">
-            Clear
-        </button>
-    </div>
-
-</EditForm>
-
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control"
-               placeholder="Search category"
-               @bind="SearchText"
-               @bind:event="oninput" />
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Categories</h1>
+        <p class="page-subtitle">Organize books by category</p>
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
+}
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:700;" Class="mb-3">
+        @(Form.Id == 0 ? "Add Category" : "Edit Category")
+    </MudText>
+    <EditForm Model="Form" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="Form.Name"
+                              Label="Category name"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6" Class="d-flex align-center gap-2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                    @(Form.Id == 0 ? "Create" : "Update")
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Clear">Clear</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" Style="border:1px solid var(--border);border-radius:14px;">
+    <MudTextField @bind-Value="SearchText"
+                  Label="Search category"
+                  Variant="Variant.Outlined"
+                  Immediate="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Margin="Margin.Dense"
+                  Style="max-width:320px;" />
+</MudPaper>
+
 @if (IsLoading)
 {
-    <p>Loading categories...</p>
-}
-else if (!FilteredCategories.Any())
-{
-    <div class="alert alert-secondary">
-        No categories found.
-    </div>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
 else
 {
-    <table class="table table-sm table-hover">
-
-        <thead>
-            <tr>
-                <th>Category Name</th>
-                <th></th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var category in FilteredCategories)
-            {
-                <tr>
-                    <td>@category.Name</td>
-
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => Edit(category)">
-                            Edit
-                        </button>
-
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(category.Id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-    </table>
+    <MudPaper Elevation="0" Style="border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+        <MudTable Items="@FilteredCategories.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Category Name</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Category Name">@context.Name</MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4 mud-text-secondary">No categories found.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
     private List<CategoryDto> Categories { get; set; } = [];
-
     private CategoryForm Form { get; set; } = new();
-
     private string? SearchText { get; set; }
-
     private string? Message { get; set; }
-
     private bool IsLoading { get; set; }
 
     private IEnumerable<CategoryDto> FilteredCategories =>
         Categories.Where(x =>
             string.IsNullOrWhiteSpace(SearchText) ||
-            x.Name.Contains(
-                SearchText,
-                StringComparison.OrdinalIgnoreCase));
+            x.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -120,28 +97,15 @@ else
     private async Task LoadCategoriesAsync()
     {
         IsLoading = true;
-
-        var result =
-            await Api.GetAsync<List<CategoryDto>>("api/Category");
-
+        var result = await Api.GetAsync<List<CategoryDto>>("api/Category");
         Categories = result.Data ?? [];
-
-        if (!result.IsSuccess)
-        {
-            Message = result.Message;
-        }
-
+        if (!result.IsSuccess) Message = result.Message;
         IsLoading = false;
     }
 
     private void Edit(CategoryDto category)
     {
-        Form = new CategoryForm
-        {
-            Id = category.Id,
-            Name = category.Name
-        };
-
+        Form = new CategoryForm { Id = category.Id, Name = category.Name };
         Message = null;
     }
 
@@ -161,59 +125,31 @@ else
 
         if (Form.Id == 0)
         {
-            var result = await Api.PostAsync<long>(
-                "api/Category",
-                new CreateCategoryRequest
-                {
-                    Name = Form.Name
-                });
-
+            var result = await Api.PostAsync<long>("api/Category", new CreateCategoryRequest { Name = Form.Name });
             Message = result.Message;
-
-            if (!result.IsSuccess)
-            {
-                return;
-            }
+            if (!result.IsSuccess) return;
         }
         else
         {
-            var result = await Api.PutAsync<CategoryDto>(
-                $"api/Category/{Form.Id}",
-                new UpdateCategoryRequest
-                {
-                    Name = Form.Name
-                });
-
+            var result = await Api.PutAsync<CategoryDto>($"api/Category/{Form.Id}", new UpdateCategoryRequest { Name = Form.Name });
             Message = result.Message;
-
-            if (!result.IsSuccess)
-            {
-                return;
-            }
+            if (!result.IsSuccess) return;
         }
 
         Form = new CategoryForm();
-
         await LoadCategoriesAsync();
     }
 
     private async Task DeleteAsync(long id)
     {
-        var result =
-            await Api.DeleteAsync<bool>($"api/Category/{id}");
-
+        var result = await Api.DeleteAsync<bool>($"api/Category/{id}");
         Message = result.Message;
-
-        if (result.IsSuccess)
-        {
-            await LoadCategoriesAsync();
-        }
+        if (result.IsSuccess) await LoadCategoriesAsync();
     }
 
     private sealed class CategoryForm
     {
         public long Id { get; set; }
-
         public string Name { get; set; } = "";
     }
 }
