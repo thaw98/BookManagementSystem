@@ -1,6 +1,8 @@
 ﻿namespace Contracts.Book;
 
-public class BookListDto
+using System.ComponentModel.DataAnnotations;
+
+public record class BookListDto
 {
     public long Id { get; set; }
 
@@ -21,7 +23,7 @@ public class BookListDto
     public DateTime CreatedAt { get; set; }
 }
 
-public sealed class BookDetailDto : BookListDto
+public record class BookDetailDto : BookListDto
 {
     public DateTime UpdatedAt { get; set; }
 
@@ -30,29 +32,39 @@ public sealed class BookDetailDto : BookListDto
     public long? UpdatedBy { get; set; }
 }
 
-public sealed class CreateBookRequest
+public record class CreateBookRequest
 {
+    [Required]
+    [MaxLength(200, ErrorMessage = "Title cannot exceed 200 characters.")]
     public string Title { get; set; } = "";
 
+    [Required]
     public long AuthorId { get; set; }
 
+    [Required]
     public long CategoryId { get; set; }
 
+    [Required]
     public int TotalCopies { get; set; }
 }
 
-public sealed class UpdateBookRequest
+public record class UpdateBookRequest
 {
+    [Required]
+    [MaxLength(200, ErrorMessage = "Title cannot exceed 200 characters.")]
     public string Title { get; set; } = "";
 
+    [Required]
     public long AuthorId { get; set; }
 
+    [Required]
     public long CategoryId { get; set; }
 
+    [Required]
     public int TotalCopies { get; set; }
 }
 
-public sealed class BookFilterRequest : Shared.Models.OffsetPagedRequest
+public record class BookFilterRequest : Shared.Models.OffsetPagedRequest
 {
     public string? Title { get; set; }
 

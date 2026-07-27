@@ -1,6 +1,8 @@
 namespace Contracts.User;
 
-public class UserListDto
+using System.ComponentModel.DataAnnotations;
+
+public record class UserListDto
 {
     public long Id { get; set; }
     public string Email { get; set; } = "";
@@ -10,34 +12,49 @@ public class UserListDto
     public DateTime CreatedAt { get; set; }
 }
 
-public sealed class UserDetailDto : UserListDto
+public record class UserDetailDto : UserListDto
 {
     public DateTime UpdatedAt { get; set; }
     public long? CreatedBy { get; set; }
     public long? UpdatedBy { get; set; }
 }
 
-public sealed class CreateUserRequest
+public record class CreateUserRequest
 {
+    [Required]
+    [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
     public string Email { get; set; } = "";
+
+    [Required]
     public string Password { get; set; } = "";
+
+    [Required]
     public long RoleId { get; set; }
+
+    [Required]
     public bool IsActive { get; set; } = true;
 }
 
-public sealed class UpdateUserRequest
+public record class UpdateUserRequest
 {
+    [Required]
+    [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
     public string Email { get; set; } = "";
+
+    [Required]
     public long RoleId { get; set; }
+
+    [Required]
     public bool IsActive { get; set; } = true;
 }
 
-public sealed class ResetPasswordRequest
+public record class ResetPasswordRequest
 {
+    [Required]
     public string Password { get; set; } = "";
 }
 
-public sealed class UserFilterRequest : Shared.Models.OffsetPagedRequest
+public record class UserFilterRequest : Shared.Models.OffsetPagedRequest
 {
     public string? Email { get; set; }
 

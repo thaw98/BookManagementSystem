@@ -1,6 +1,6 @@
 namespace Shared.Models;
 
-public class OffsetPagedRequest
+public record class OffsetPagedRequest
 {
     private int _page = 1;
     private int _pageSize = 10;

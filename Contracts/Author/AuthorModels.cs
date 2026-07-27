@@ -1,23 +1,29 @@
 ﻿namespace Contracts.Author;
 
-public class AuthorDto
+using System.ComponentModel.DataAnnotations;
+
+public record class AuthorDto
 {
     public long Id { get; set; }
 
     public string Name { get; set; } = "";
 }
 
-public sealed class CreateAuthorRequest
+public record class CreateAuthorRequest
 {
+    [Required]
+    [MaxLength(150, ErrorMessage = "Name cannot exceed 150 characters.")]
     public string Name { get; set; } = "";
 }
 
-public sealed class UpdateAuthorRequest
+public record class UpdateAuthorRequest
 {
+    [Required]
+    [MaxLength(150, ErrorMessage = "Name cannot exceed 150 characters.")]
     public string Name { get; set; } = "";
 }
 
-public sealed class AuthorFilterRequest : Shared.Models.OffsetPagedRequest
+public record class AuthorFilterRequest : Shared.Models.OffsetPagedRequest
 {
     public string? Name { get; set; }
 }
