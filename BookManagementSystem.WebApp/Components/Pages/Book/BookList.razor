@@ -42,6 +42,8 @@
                               Label="Book title"
                               Variant="Variant.Outlined"
                               Required="true"
+                              Counter="200"
+                              MaxLength="200"
                               AutoFocus="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
@@ -102,6 +104,8 @@
                               Label="Book title"
                               Variant="Variant.Outlined"
                               Required="true"
+                              Counter="200"
+                              MaxLength="200"
                               AutoFocus="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
@@ -421,6 +425,7 @@
         public long Id { get; set; }
 
         [Required(ErrorMessage = "Book title is required.")]
+        [MaxLength(200, ErrorMessage = "Title cannot exceed 200 characters.")]
         public string Title { get; set; } = "";
 
         [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Please select an author.")]

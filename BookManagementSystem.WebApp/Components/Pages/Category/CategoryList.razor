@@ -40,6 +40,8 @@
                       Label="Category name"
                       Variant="Variant.Outlined"
                       Required="true"
+                      Counter="100"
+                      MaxLength="100"
                       AutoFocus="true" />
     </FormFields>
 </CreateEntityDialog>
@@ -59,6 +61,8 @@
                       Label="Category name"
                       Variant="Variant.Outlined"
                       Required="true"
+                      Counter="100"
+                      MaxLength="100"
                       AutoFocus="true" />
     </FormFields>
 </EditEntityDialog>
@@ -234,6 +238,7 @@
         public long Id { get; set; }
 
         [Required(ErrorMessage = "Category name is required.")]
+        [MaxLength(100, ErrorMessage = "Name cannot exceed 100 characters.")]
         public string Name { get; set; } = "";
     }
 }

@@ -40,12 +40,16 @@
                       Label="Name"
                       Variant="Variant.Outlined"
                       Required="true"
+                      Counter="50"
+                      MaxLength="50"
                       AutoFocus="true"
                       Class="mb-3" />
         <MudTextField @bind-Value="model.Description"
                       For="@(() => model.Description)"
                       Label="Description"
                       Variant="Variant.Outlined"
+                      Counter="255"
+                      MaxLength="255"
                       Lines="3" />
     </FormFields>
 </CreateEntityDialog>
@@ -65,6 +69,8 @@
                       Label="Name"
                       Variant="Variant.Outlined"
                       Required="true"
+                      Counter="50"
+                      MaxLength="50"
                       Disabled="@model.IsProtected"
                       AutoFocus="@(!model.IsProtected)"
                       Class="mb-3" />
@@ -72,6 +78,8 @@
                       For="@(() => model.Description)"
                       Label="Description"
                       Variant="Variant.Outlined"
+                      Counter="255"
+                      MaxLength="255"
                       AutoFocus="@model.IsProtected"
                       Lines="3" />
     </FormFields>
@@ -265,8 +273,10 @@
         public long Id { get; set; }
 
         [Required(ErrorMessage = "Role name is required.")]
+        [MaxLength(50, ErrorMessage = "Name cannot exceed 50 characters.")]
         public string Name { get; set; } = "";
 
+        [MaxLength(255, ErrorMessage = "Description cannot exceed 255 characters.")]
         public string? Description { get; set; }
         public bool IsProtected { get; set; }
     }

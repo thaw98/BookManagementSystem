@@ -43,6 +43,8 @@
                               InputType="InputType.Email"
                               Variant="Variant.Outlined"
                               Required="true"
+                              Counter="150"
+                              MaxLength="150"
                               AutoFocus="true" />
             </MudItem>
             <MudItem xs="12" sm="5">
@@ -94,6 +96,8 @@
                               InputType="InputType.Email"
                               Variant="Variant.Outlined"
                               Required="true"
+                              Counter="150"
+                              MaxLength="150"
                               AutoFocus="true" />
             </MudItem>
             <MudItem xs="12" sm="5">
@@ -400,6 +404,7 @@
     {
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
         public string Email { get; set; } = "";
 
         [Required(ErrorMessage = "Password is required.")]
@@ -417,6 +422,7 @@
 
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
         public string Email { get; set; } = "";
 
         [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Please select a role.")]
