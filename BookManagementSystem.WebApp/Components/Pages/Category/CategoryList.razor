@@ -1,6 +1,7 @@
-﻿@page "/categories"
+@page "/categories"
 @attribute [Authorize(Roles = "Librarian")]
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
 <PageTitle>Categories — BMS</PageTitle>
 
@@ -9,6 +10,13 @@
         <h1 class="page-title">Categories</h1>
         <p class="page-subtitle">Organize books by category</p>
     </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Category
+    </MudButton>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
@@ -16,27 +24,43 @@
     <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <h3 class="section-title">@(Form.Id == 0 ? "Add Category" : "Edit Category")</h3>
-    <EditForm Model="Form" OnValidSubmit="SaveAsync">
-        <DataAnnotationsValidator />
-        <MudGrid Spacing="2">
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="Form.Name"
-                              Label="Category name"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12" md="6" Class="d-flex align-center gap-2">
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
-                    @(Form.Id == 0 ? "Create" : "Update")
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Clear">Clear</MudButton>
-            </MudItem>
-        </MudGrid>
-    </EditForm>
-</MudPaper>
+<CreateEntityDialog TModel="CategoryForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Category"
+                    SupportingText="Create a category for organizing the catalog."
+                    DialogWidth="MaxWidth.Small"
+                    Submit="CreateCategoryAsync"
+                    OnSuccess="OnCategoryCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Category name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      AutoFocus="true" />
+    </FormFields>
+</CreateEntityDialog>
+
+<EditEntityDialog TModel="CategoryForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Category"
+                  SupportingText="Update the category name used in the catalog."
+                  DialogWidth="MaxWidth.Small"
+                  Submit="UpdateCategoryAsync"
+                  OnSuccess="OnCategoryUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Category name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      AutoFocus="true" />
+    </FormFields>
+</EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudTextField @bind-Value="SearchText"
@@ -64,8 +88,17 @@ else
             <RowTemplate>
                 <MudTd DataLabel="Category Name">@context.Name</MudTd>
                 <MudTd DataLabel="Actions" Style="text-align:right">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+                    <MudIconButton id="@EditTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="() => OpenEditDialog(context)"
+                                   aria-label="@($"Edit {context.Name}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteAsync(context.Id)"
+                                   aria-label="@($"Delete {context.Name}")" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -76,8 +109,13 @@ else
 }
 
 @code {
+    private const string AddTriggerId = "add-category-trigger";
     private List<CategoryDto> Categories { get; set; } = [];
-    private CategoryForm Form { get; set; } = new();
+    private CategoryForm _createForm = new();
+    private CategoryForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private string? _editReturnFocusId;
     private string? SearchText { get; set; }
     private string? Message { get; set; }
     private bool IsLoading { get; set; }
@@ -101,41 +139,47 @@ else
         IsLoading = false;
     }
 
-    private void Edit(CategoryDto category)
+    private void OpenCreateDialog()
     {
-        Form = new CategoryForm { Id = category.Id, Name = category.Name };
+        _createForm = new CategoryForm();
         Message = null;
+        _createDialogOpen = true;
     }
 
-    private void Clear()
+    private void OpenEditDialog(CategoryDto category)
     {
-        Form = new CategoryForm();
+        _editForm = new CategoryForm { Id = category.Id, Name = category.Name };
+        _editReturnFocusId = EditTriggerId(category.Id);
         Message = null;
+        _editDialogOpen = true;
     }
 
-    private async Task SaveAsync()
+    private async Task<FormSubmitResult> CreateCategoryAsync(CategoryForm form)
     {
-        if (string.IsNullOrWhiteSpace(Form.Name))
-        {
-            Message = "Category name is required.";
-            return;
-        }
+        var result = await Api.PostAsync<long>("api/Category", new CreateCategoryRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>("api/Category", new CreateCategoryRequest { Name = Form.Name });
-            Message = result.Message;
-            if (!result.IsSuccess) return;
-        }
-        else
-        {
-            var result = await Api.PutAsync<CategoryDto>($"api/Category/{Form.Id}", new UpdateCategoryRequest { Name = Form.Name });
-            Message = result.Message;
-            if (!result.IsSuccess) return;
-        }
+    private async Task<FormSubmitResult> UpdateCategoryAsync(CategoryForm form)
+    {
+        var result = await Api.PutAsync<CategoryDto>(
+            $"api/Category/{form.Id}",
+            new UpdateCategoryRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-        Form = new CategoryForm();
+    private async Task OnCategoryCreatedAsync(FormSubmitResult result)
+    {
+        Message = null;
         await LoadCategoriesAsync();
+        Snackbar.Add(result.Message ?? "Category created successfully.", Severity.Success);
+    }
+
+    private async Task OnCategoryUpdatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await LoadCategoriesAsync();
+        Snackbar.Add(result.Message ?? "Category updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
@@ -145,9 +189,13 @@ else
         if (result.IsSuccess) await LoadCategoriesAsync();
     }
 
+    private static string EditTriggerId(long id) => $"edit-category-{id}";
+
     private sealed class CategoryForm
     {
         public long Id { get; set; }
+
+        [Required(ErrorMessage = "Category name is required.")]
         public string Name { get; set; } = "";
     }
 }

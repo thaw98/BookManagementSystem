@@ -1,0 +1,318 @@
+@typeparam TModel where TModel : class
+@implements IDisposable
+@inject IJSRuntime JS
+
+<MudDialog Visible="@IsOpen"
+           VisibleChanged="OnVisibleChangedAsync"
+           Options="@DialogOptions"
+           DefaultFocus="DefaultFocus.None"
+           OnBackdropClick="OnBackdropClickAsync"
+           OnKeyDown="OnDialogKeyDownAsync"
+           Class="bms-form-dialog">
+    <TitleContent>
+        <div class="bms-form-dialog-title">
+            <MudText Typo="Typo.h6" id="@_titleId">@DialogTitle</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           ButtonType="ButtonType.Button"
+                           Size="Size.Small"
+                           Disabled="@_isSaving"
+                           OnClick="RequestCloseAsync"
+                           aria-label="@($"Close {DialogTitle}")" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_showDiscardConfirmation)
+        {
+            <div class="bms-discard-prompt" role="alert" aria-labelledby="@_discardTitleId">
+                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Size="Size.Large" />
+                <div>
+                    <MudText Typo="Typo.h6" id="@_discardTitleId">Discard changes?</MudText>
+                    <MudText Typo="Typo.body2">Your unsaved changes will be lost.</MudText>
+                </div>
+            </div>
+        }
+        else if (_editContext is not null)
+        {
+            @if (!string.IsNullOrWhiteSpace(SupportingText))
+            {
+                <MudText Typo="Typo.body2"
+                         Class="bms-form-dialog-supporting"
+                         id="@_supportingTextId">
+                    @SupportingText
+                </MudText>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_apiError))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Outlined"
+                          Class="mb-3"
+                          role="alert"
+                          aria-live="assertive">
+                    @_apiError
+                </MudAlert>
+            }
+
+            <EditForm id="@_formId"
+                      EditContext="@_editContext"
+                      OnValidSubmit="SubmitAsync"
+                      OnInvalidSubmit="OnInvalidSubmitAsync"
+                      class="bms-form-dialog-form"
+                      aria-describedby="@SupportingTextAriaId">
+                <DataAnnotationsValidator />
+                @FormFields(Model)
+                <ValidationSummary class="bms-validation-summary" />
+            </EditForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_showDiscardConfirmation)
+        {
+            <MudButton ButtonType="ButtonType.Button"
+                       Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       OnClick="KeepEditing"
+                       autofocus="autofocus">
+                Keep editing
+            </MudButton>
+            <MudButton ButtonType="ButtonType.Button"
+                       Variant="Variant.Filled"
+                       Color="Color.Error"
+                       OnClick="DiscardAsync">
+                Discard
+            </MudButton>
+        }
+        else
+        {
+            <MudButton ButtonType="ButtonType.Button"
+                       Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       Disabled="@_isSaving"
+                       OnClick="RequestCloseAsync">
+                Cancel
+            </MudButton>
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@_isSaving"
+                       form="@_formId">
+                @if (_isSaving)
+                {
+                    <MudProgressCircular Indeterminate="true"
+                                         Size="Size.Small"
+                                         Color="Color.Inherit"
+                                         Class="bms-submit-spinner" />
+                    <span>Saving…</span>
+                }
+                else
+                {
+                    @SubmitLabel
+                }
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly string _instanceId = Guid.NewGuid().ToString("N");
+    private EditContext? _editContext;
+    private bool _wasOpen;
+    private bool _isDirty;
+    private bool _isSaving;
+    private bool _showDiscardConfirmation;
+    private bool _focusInvalidAfterRender;
+    private bool _restoreFocusAfterRender;
+    private string? _apiError;
+
+    private string _titleId => $"bms-form-dialog-title-{_instanceId}";
+    private string _discardTitleId => $"bms-discard-title-{_instanceId}";
+    private string _supportingTextId => $"bms-form-dialog-supporting-{_instanceId}";
+    private string _formId => $"bms-form-dialog-form-{_instanceId}";
+    private string? SupportingTextAriaId =>
+        string.IsNullOrWhiteSpace(SupportingText) ? null : _supportingTextId;
+
+    private DialogOptions DialogOptions => new()
+    {
+        Position = DialogPosition.Center,
+        MaxWidth = DialogWidth,
+        FullWidth = true,
+        BackdropClick = true,
+        CloseOnEscapeKey = false,
+        CloseButton = false,
+        BackgroundClass = "bms-form-dialog-backdrop"
+    };
+
+    [Parameter, EditorRequired] public TModel Model { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TModel> FormFields { get; set; } = default!;
+    [Parameter, EditorRequired] public string DialogTitle { get; set; } = "";
+    [Parameter, EditorRequired] public string SubmitLabel { get; set; } = "";
+    [Parameter] public string? SupportingText { get; set; }
+    [Parameter] public MaxWidth DialogWidth { get; set; } = MaxWidth.Small;
+    [Parameter, EditorRequired] public Func<TModel, Task<FormSubmitResult>> Submit { get; set; } = default!;
+    [Parameter] public EventCallback<FormSubmitResult> OnSuccess { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string? ReturnFocusElementId { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && (!_wasOpen || _editContext is null || !ReferenceEquals(_editContext.Model, Model)))
+            InitializeEditContext();
+
+        _wasOpen = IsOpen;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusInvalidAfterRender)
+        {
+            _focusInvalidAfterRender = false;
+            await InvokeJsSafelyAsync("bmsFormDialogs.focusFirstInvalid", _formId);
+        }
+
+        if (_restoreFocusAfterRender)
+        {
+            _restoreFocusAfterRender = false;
+            if (!string.IsNullOrWhiteSpace(ReturnFocusElementId))
+                await InvokeJsSafelyAsync("bmsFormDialogs.focusById", ReturnFocusElementId);
+        }
+    }
+
+    private void InitializeEditContext()
+    {
+        DetachEditContext();
+        _editContext = new EditContext(Model);
+        _editContext.OnFieldChanged += OnFieldChanged;
+        _isDirty = false;
+        _isSaving = false;
+        _showDiscardConfirmation = false;
+        _apiError = null;
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs args)
+    {
+        _isDirty = true;
+        if (_apiError is not null)
+        {
+            _apiError = null;
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_isSaving)
+            return;
+
+        _isSaving = true;
+        _apiError = null;
+
+        try
+        {
+            var result = await Submit(Model);
+            if (!result.IsSuccess)
+            {
+                _apiError = string.IsNullOrWhiteSpace(result.Message)
+                    ? $"Unable to save {DialogTitle.ToLowerInvariant()}."
+                    : result.Message;
+                return;
+            }
+
+            _isDirty = false;
+            await CloseImmediatelyAsync(restoreFocus: false);
+            try
+            {
+                await OnSuccess.InvokeAsync(result);
+            }
+            finally
+            {
+                _restoreFocusAfterRender = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch
+        {
+            _apiError = "Something went wrong while saving. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private Task OnInvalidSubmitAsync(EditContext context)
+    {
+        _focusInvalidAfterRender = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnBackdropClickAsync(MouseEventArgs args) => RequestCloseAsync();
+
+    private Task OnDialogKeyDownAsync(KeyboardEventArgs args) =>
+        args.Key == "Escape" ? RequestCloseAsync() : Task.CompletedTask;
+
+    private async Task OnVisibleChangedAsync(bool visible)
+    {
+        if (!visible && IsOpen)
+            await RequestCloseAsync();
+    }
+
+    private async Task RequestCloseAsync()
+    {
+        if (_isSaving)
+            return;
+
+        if (_isDirty)
+        {
+            _showDiscardConfirmation = true;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await CloseImmediatelyAsync();
+    }
+
+    private void KeepEditing()
+    {
+        _showDiscardConfirmation = false;
+    }
+
+    private Task DiscardAsync()
+    {
+        _isDirty = false;
+        return CloseImmediatelyAsync();
+    }
+
+    private async Task CloseImmediatelyAsync(bool restoreFocus = true)
+    {
+        _showDiscardConfirmation = false;
+        _apiError = null;
+        _wasOpen = false;
+        _restoreFocusAfterRender = restoreFocus;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task InvokeJsSafelyAsync(string identifier, params object?[] args)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(identifier, args);
+        }
+        catch (JSException)
+        {
+            // Focus restoration is progressive enhancement; the dialog state is already correct.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit was closed before focus could be restored.
+        }
+    }
+
+    private void DetachEditContext()
+    {
+        if (_editContext is not null)
+            _editContext.OnFieldChanged -= OnFieldChanged;
+    }
+
+    public void Dispose() => DetachEditContext();
+}

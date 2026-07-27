@@ -1,6 +1,7 @@
-﻿@page "/books"
+@page "/books"
 @attribute [Authorize(Roles = "Librarian")]
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
 <PageTitle>Books — BMS</PageTitle>
 
@@ -9,12 +10,140 @@
         <h1 class="page-title">Books</h1>
         <p class="page-subtitle">Browse and manage the book catalog</p>
     </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Book
+    </MudButton>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
     <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
+
+<CreateEntityDialog TModel="BookForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Book"
+                    SupportingText="Add a title and its inventory details to the catalog."
+                    DialogWidth="MaxWidth.Medium"
+                    Submit="CreateBookAsync"
+                    OnSuccess="OnBookCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudGrid Spacing="2" Class="bms-dialog-grid">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Title"
+                              For="@(() => model.Title)"
+                              Label="Book title"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              AutoFocus="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="long"
+                           @bind-Value="model.AuthorId"
+                           For="@(() => model.AuthorId)"
+                           Label="Author"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="long" Value="0">Select author</MudSelectItem>
+                    @foreach (var author in Authors)
+                    {
+                        <MudSelectItem T="long" Value="@author.Id">@author.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="long"
+                           @bind-Value="model.CategoryId"
+                           For="@(() => model.CategoryId)"
+                           Label="Category"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="long" Value="0">Select category</MudSelectItem>
+                    @foreach (var category in Categories)
+                    {
+                        <MudSelectItem T="long" Value="@category.Id">@category.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int"
+                                 @bind-Value="model.TotalCopies"
+                                 For="@(() => model.TotalCopies)"
+                                 Label="Copy count"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Required="true" />
+            </MudItem>
+        </MudGrid>
+    </FormFields>
+</CreateEntityDialog>
+
+<EditEntityDialog TModel="BookForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Book"
+                  SupportingText="Update catalog details without reducing inventory below current loans."
+                  DialogWidth="MaxWidth.Medium"
+                  Submit="UpdateBookAsync"
+                  OnSuccess="OnBookUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudGrid Spacing="2" Class="bms-dialog-grid">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Title"
+                              For="@(() => model.Title)"
+                              Label="Book title"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              AutoFocus="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="long"
+                           @bind-Value="model.AuthorId"
+                           For="@(() => model.AuthorId)"
+                           Label="Author"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="long" Value="0">Select author</MudSelectItem>
+                    @foreach (var author in Authors)
+                    {
+                        <MudSelectItem T="long" Value="@author.Id">@author.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="long"
+                           @bind-Value="model.CategoryId"
+                           For="@(() => model.CategoryId)"
+                           Label="Category"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="long" Value="0">Select category</MudSelectItem>
+                    @foreach (var category in Categories)
+                    {
+                        <MudSelectItem T="long" Value="@category.Id">@category.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int"
+                                 @bind-Value="model.TotalCopies"
+                                 For="@(() => model.TotalCopies)"
+                                 Label="Copy count"
+                                 Variant="Variant.Outlined"
+                                 Min="@Math.Max(1, model.BorrowedCopies)"
+                                 Required="true"
+                                 HelperText="@BorrowedCopiesHelp(model)" />
+            </MudItem>
+        </MudGrid>
+    </FormFields>
+</EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudGrid Spacing="2">
@@ -52,61 +181,6 @@
     </MudGrid>
 </MudPaper>
 
-<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <h3 class="section-title">@(Form.Id == 0 ? "Add Book" : "Edit Book")</h3>
-    <EditForm Model="Form" OnValidSubmit="SaveAsync">
-        <DataAnnotationsValidator />
-        <MudGrid Spacing="2">
-            <MudItem xs="12" md="3">
-                <MudTextField @bind-Value="Form.Title"
-                              Label="Book title"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12" md="2">
-                <MudSelect T="long"
-                           @bind-Value="Form.AuthorId"
-                           Label="Author"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense">
-                    <MudSelectItem T="long" Value="0">Select author</MudSelectItem>
-                    @foreach (var author in Authors)
-                    {
-                        <MudSelectItem T="long" Value="@author.Id">@author.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="2">
-                <MudSelect T="long"
-                           @bind-Value="Form.CategoryId"
-                           Label="Category"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense">
-                    <MudSelectItem T="long" Value="0">Select category</MudSelectItem>
-                    @foreach (var category in Categories)
-                    {
-                        <MudSelectItem T="long" Value="@category.Id">@category.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="2">
-                <MudNumericField @bind-Value="Form.TotalCopies"
-                                 Label="Copy count"
-                                 Variant="Variant.Outlined"
-                                 Margin="Margin.Dense"
-                                 Min="1" />
-            </MudItem>
-            <MudItem xs="12" md="3" Class="d-flex align-center gap-2">
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
-                    @(Form.Id == 0 ? "Create" : "Update")
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearForm">Clear</MudButton>
-            </MudItem>
-        </MudGrid>
-    </EditForm>
-</MudPaper>
-
 @if (IsLoading)
 {
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
@@ -134,8 +208,17 @@ else
                     </span>
                 </MudTd>
                 <MudTd DataLabel="Actions" Style="text-align:right">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+                    <MudIconButton id="@EditTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="() => OpenEditDialog(context)"
+                                   aria-label="@($"Edit {context.Title}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteAsync(context.Id)"
+                                   aria-label="@($"Delete {context.Title}")" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -146,10 +229,15 @@ else
 }
 
 @code {
+    private const string AddTriggerId = "add-book-trigger";
     private List<BookListDto> Books { get; set; } = [];
     private List<AuthorDto> Authors { get; set; } = [];
     private List<CategoryDto> Categories { get; set; } = [];
-    private BookForm Form { get; set; } = new();
+    private BookForm _createForm = new() { TotalCopies = 1 };
+    private BookForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private string? _editReturnFocusId;
     private string? TitleFilter { get; set; }
     private string? AuthorFilter { get; set; }
     private long CategoryFilter { get; set; }
@@ -201,23 +289,27 @@ else
         if (!result.IsSuccess) Message = result.Message;
     }
 
-    private void Edit(BookListDto book)
+    private void OpenCreateDialog()
     {
-        Form = new BookForm
+        _createForm = new BookForm { TotalCopies = 1 };
+        Message = null;
+        _createDialogOpen = true;
+    }
+
+    private void OpenEditDialog(BookListDto book)
+    {
+        _editForm = new BookForm
         {
             Id = book.Id,
             Title = book.Title,
             AuthorId = book.AuthorId,
             CategoryId = book.CategoryId,
-            TotalCopies = book.TotalCopies
+            TotalCopies = book.TotalCopies,
+            BorrowedCopies = book.TotalCopies - book.AvailableCopies
         };
+        _editReturnFocusId = EditTriggerId(book.Id);
         Message = null;
-    }
-
-    private void ClearForm()
-    {
-        Form = new BookForm();
-        Message = null;
+        _editDialogOpen = true;
     }
 
     private async Task ClearFiltersAsync()
@@ -228,64 +320,42 @@ else
         await LoadBooksAsync();
     }
 
-    private async Task SaveAsync()
+    private async Task<FormSubmitResult> CreateBookAsync(BookForm form)
     {
-        if (string.IsNullOrWhiteSpace(Form.Title))
+        var result = await Api.PostAsync<long>("api/Book", new CreateBookRequest
         {
-            Message = "Book title is required.";
-            return;
-        }
+            Title = form.Title.Trim(),
+            AuthorId = form.AuthorId,
+            CategoryId = form.CategoryId,
+            TotalCopies = form.TotalCopies
+        });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-        if (Form.AuthorId <= 0)
+    private async Task<FormSubmitResult> UpdateBookAsync(BookForm form)
+    {
+        var result = await Api.PutAsync<BookDetailDto>($"api/Book/{form.Id}", new UpdateBookRequest
         {
-            Message = "Please select an author.";
-            return;
-        }
+            Title = form.Title.Trim(),
+            AuthorId = form.AuthorId,
+            CategoryId = form.CategoryId,
+            TotalCopies = form.TotalCopies
+        });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-        if (Form.CategoryId <= 0)
-        {
-            Message = "Please select a category.";
-            return;
-        }
+    private async Task OnBookCreatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await LoadBooksAsync();
+        Snackbar.Add(result.Message ?? "Book created successfully.", Severity.Success);
+    }
 
-        if (Form.TotalCopies <= 0)
-        {
-            Message = "Copy count must be greater than zero.";
-            return;
-        }
-
-        var succeeded = false;
-
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>("api/Book", new CreateBookRequest
-            {
-                Title = Form.Title,
-                AuthorId = Form.AuthorId,
-                CategoryId = Form.CategoryId,
-                TotalCopies = Form.TotalCopies
-            });
-            Message = result.Message;
-            succeeded = result.IsSuccess;
-        }
-        else
-        {
-            var result = await Api.PutAsync<BookDetailDto>($"api/Book/{Form.Id}", new UpdateBookRequest
-            {
-                Title = Form.Title,
-                AuthorId = Form.AuthorId,
-                CategoryId = Form.CategoryId,
-                TotalCopies = Form.TotalCopies
-            });
-            Message = result.Message;
-            succeeded = result.IsSuccess;
-        }
-
-        if (succeeded)
-        {
-            ClearForm();
-            await LoadBooksAsync();
-        }
+    private async Task OnBookUpdatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await LoadBooksAsync();
+        Snackbar.Add(result.Message ?? "Book updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
@@ -295,6 +365,13 @@ else
         if (result.IsSuccess) await LoadBooksAsync();
     }
 
+    private static string BorrowedCopiesHelp(BookForm form) =>
+        form.BorrowedCopies == 0
+            ? "No copies are currently borrowed."
+            : $"At least {form.BorrowedCopies} copies are required because {form.BorrowedCopies} are currently borrowed.";
+
+    private static string EditTriggerId(long id) => $"edit-book-{id}";
+
     private static string AvailClass(int available, int total)
     {
         if (available <= 0) return "none";
@@ -302,12 +379,32 @@ else
         return string.Empty;
     }
 
-    private sealed class BookForm
+    private sealed class BookForm : IValidatableObject
     {
         public long Id { get; set; }
+
+        [Required(ErrorMessage = "Book title is required.")]
         public string Title { get; set; } = "";
+
+        [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Please select an author.")]
         public long AuthorId { get; set; }
+
+        [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Please select a category.")]
         public long CategoryId { get; set; }
-        public int TotalCopies { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Copy count must be greater than zero.")]
+        public int TotalCopies { get; set; } = 1;
+
+        public int BorrowedCopies { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (TotalCopies < BorrowedCopies)
+            {
+                yield return new ValidationResult(
+                    $"Copy count cannot be below the {BorrowedCopies} currently borrowed.",
+                    [nameof(TotalCopies)]);
+            }
+        }
     }
 }

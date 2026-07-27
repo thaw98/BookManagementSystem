@@ -1,6 +1,7 @@
-﻿@page "/authors"
+@page "/authors"
 @attribute [Authorize(Roles = "Librarian")]
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
 <PageTitle>Authors — BMS</PageTitle>
 
@@ -9,6 +10,13 @@
         <h1 class="page-title">Authors</h1>
         <p class="page-subtitle">Maintain the author directory</p>
     </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Author
+    </MudButton>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
@@ -16,27 +24,43 @@
     <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <h3 class="section-title">@(Form.Id == 0 ? "Add Author" : "Edit Author")</h3>
-    <EditForm Model="Form" OnValidSubmit="SaveAsync">
-        <DataAnnotationsValidator />
-        <MudGrid Spacing="2">
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="Form.Name"
-                              Label="Author name"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Required="true" />
-            </MudItem>
-            <MudItem xs="12" md="6" Class="d-flex align-center gap-2">
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
-                    @(Form.Id == 0 ? "Create" : "Update")
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Clear">Clear</MudButton>
-            </MudItem>
-        </MudGrid>
-    </EditForm>
-</MudPaper>
+<CreateEntityDialog TModel="AuthorForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Author"
+                    SupportingText="Add an author to the directory."
+                    DialogWidth="MaxWidth.Small"
+                    Submit="CreateAuthorAsync"
+                    OnSuccess="OnAuthorCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Author name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      AutoFocus="true" />
+    </FormFields>
+</CreateEntityDialog>
+
+<EditEntityDialog TModel="AuthorForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Author"
+                  SupportingText="Update the author's directory name."
+                  DialogWidth="MaxWidth.Small"
+                  Submit="UpdateAuthorAsync"
+                  OnSuccess="OnAuthorUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Author name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      AutoFocus="true" />
+    </FormFields>
+</EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudTextField @bind-Value="SearchText"
@@ -64,8 +88,17 @@ else
             <RowTemplate>
                 <MudTd DataLabel="Author Name">@context.Name</MudTd>
                 <MudTd DataLabel="Actions" Style="text-align:right">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => Edit(context)" aria-label="Edit" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)" aria-label="Delete" />
+                    <MudIconButton id="@EditTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="() => OpenEditDialog(context)"
+                                   aria-label="@($"Edit {context.Name}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteAsync(context.Id)"
+                                   aria-label="@($"Delete {context.Name}")" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -76,8 +109,13 @@ else
 }
 
 @code {
+    private const string AddTriggerId = "add-author-trigger";
     private List<AuthorDto> Authors { get; set; } = [];
-    private AuthorForm Form { get; set; } = new();
+    private AuthorForm _createForm = new();
+    private AuthorForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private string? _editReturnFocusId;
     private string? SearchText { get; set; }
     private string? Message { get; set; }
     private bool IsLoading { get; set; }
@@ -101,41 +139,47 @@ else
         IsLoading = false;
     }
 
-    private void Edit(AuthorDto author)
+    private void OpenCreateDialog()
     {
-        Form = new AuthorForm { Id = author.Id, Name = author.Name };
+        _createForm = new AuthorForm();
         Message = null;
+        _createDialogOpen = true;
     }
 
-    private void Clear()
+    private void OpenEditDialog(AuthorDto author)
     {
-        Form = new AuthorForm();
+        _editForm = new AuthorForm { Id = author.Id, Name = author.Name };
+        _editReturnFocusId = EditTriggerId(author.Id);
         Message = null;
+        _editDialogOpen = true;
     }
 
-    private async Task SaveAsync()
+    private async Task<FormSubmitResult> CreateAuthorAsync(AuthorForm form)
     {
-        if (string.IsNullOrWhiteSpace(Form.Name))
-        {
-            Message = "Author name is required.";
-            return;
-        }
+        var result = await Api.PostAsync<long>("api/Author", new CreateAuthorRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>("api/Author", new CreateAuthorRequest { Name = Form.Name });
-            Message = result.Message;
-            if (!result.IsSuccess) return;
-        }
-        else
-        {
-            var result = await Api.PutAsync<AuthorDto>($"api/Author/{Form.Id}", new UpdateAuthorRequest { Name = Form.Name });
-            Message = result.Message;
-            if (!result.IsSuccess) return;
-        }
+    private async Task<FormSubmitResult> UpdateAuthorAsync(AuthorForm form)
+    {
+        var result = await Api.PutAsync<AuthorDto>(
+            $"api/Author/{form.Id}",
+            new UpdateAuthorRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-        Form = new AuthorForm();
+    private async Task OnAuthorCreatedAsync(FormSubmitResult result)
+    {
+        Message = null;
         await LoadAuthorsAsync();
+        Snackbar.Add(result.Message ?? "Author created successfully.", Severity.Success);
+    }
+
+    private async Task OnAuthorUpdatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await LoadAuthorsAsync();
+        Snackbar.Add(result.Message ?? "Author updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
@@ -145,9 +189,13 @@ else
         if (result.IsSuccess) await LoadAuthorsAsync();
     }
 
+    private static string EditTriggerId(long id) => $"edit-author-{id}";
+
     private sealed class AuthorForm
     {
         public long Id { get; set; }
+
+        [Required(ErrorMessage = "Author name is required.")]
         public string Name { get; set; } = "";
     }
 }

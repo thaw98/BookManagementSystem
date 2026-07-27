@@ -1,0 +1,27 @@
+@typeparam TModel where TModel : class
+
+<FormEntityDialogCore TModel="TModel"
+                      Model="@Model"
+                      FormFields="@FormFields"
+                      DialogTitle="@($"Add {EntityLabel}")"
+                      SubmitLabel="@($"Create {EntityLabel.ToLowerInvariant()}")"
+                      SupportingText="@SupportingText"
+                      DialogWidth="@DialogWidth"
+                      Submit="@Submit"
+                      OnSuccess="@OnSuccess"
+                      IsOpen="@IsOpen"
+                      IsOpenChanged="@IsOpenChanged"
+                      ReturnFocusElementId="@ReturnFocusElementId" />
+
+@code {
+    [Parameter, EditorRequired] public TModel Model { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TModel> FormFields { get; set; } = default!;
+    [Parameter, EditorRequired] public string EntityLabel { get; set; } = "";
+    [Parameter] public string? SupportingText { get; set; }
+    [Parameter] public MaxWidth DialogWidth { get; set; } = MaxWidth.Small;
+    [Parameter, EditorRequired] public Func<TModel, Task<FormSubmitResult>> Submit { get; set; } = default!;
+    [Parameter] public EventCallback<FormSubmitResult> OnSuccess { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string? ReturnFocusElementId { get; set; }
+}
