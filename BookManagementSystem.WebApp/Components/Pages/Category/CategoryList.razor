@@ -1,6 +1,6 @@
 @page "/categories"
 @attribute [Authorize(Roles = "Librarian")]
-@inherits OffsetPagedComponentBase<CategoryDto>
+@inherits ServerPagedComponentBase<CategoryDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -64,16 +64,19 @@
 </EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <MudTextField T="string"
-                  Value="@SearchText"
-                  ValueChanged="OnSearchTextChangedAsync"
-                  Label="Search category"
-                  Variant="Variant.Outlined"
-                  Immediate="true"
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search"
-                  Margin="Margin.Dense"
-                  Style="max-width:320px;" />
+    <div class="d-flex align-center gap-2 flex-wrap">
+        <MudTextField T="string"
+                      @bind-Value="SearchText"
+                      Label="Search category"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Margin="Margin.Dense"
+                      Style="max-width:320px;" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
+    </div>
 </MudPaper>
 
 @if (IsLoading)
@@ -82,9 +85,16 @@
 }
 
 <MudPaper Class="bms-panel" Elevation="0">
-    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+    <MudTable T="CategoryDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
             <HeaderContent>
-                <MudTh>Category Name</MudTh>
+                <MudTh><MudTableSortLabel T="CategoryDto" SortLabel="name">Category Name</MudTableSortLabel></MudTh>
                 <MudTh Style="text-align:right">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
@@ -107,13 +117,7 @@
                 <MudText Class="pa-4 mud-text-secondary">No categories found.</MudText>
             </NoRecordsContent>
             <PagerContent>
-                <OffsetPager PageSize="@PageSize"
-                             TotalCount="@TotalCount"
-                             CurrentPage="@CurrentPage"
-                             PageCount="@PageCount"
-                             IsLoading="@IsLoading"
-                             PageChanged="ChangePageAsync"
-                             PageSizeChanged="ChangePageSizeAsync" />
+                <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
             </PagerContent>
     </MudTable>
 </MudPaper>
@@ -126,31 +130,44 @@
     private bool _editDialogOpen;
     private string? _editReturnFocusId;
     private string? SearchText { get; set; }
+    private string? _appliedSearchText;
     private string? Message { get; set; }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await ReloadFromFirstPageAsync();
-    }
-
     protected override Task<Result<OffsetPagedResult<CategoryDto>>> FetchPageAsync(
+        TableState state,
         CancellationToken cancellationToken)
     {
-        var url = $"api/Category/paged?page={CurrentPage}&pageSize={PageSize}";
-        if (!string.IsNullOrWhiteSpace(SearchText))
-            url += $"&search={Uri.EscapeDataString(SearchText.Trim())}";
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+        if (!string.IsNullOrWhiteSpace(_appliedSearchText))
+            queryParameters.Add($"search={Uri.EscapeDataString(_appliedSearchText)}");
+        AddSortingParameters(queryParameters, state);
 
-        return Api.GetAsync<OffsetPagedResult<CategoryDto>>(url, cancellationToken);
+        return Api.GetAsync<OffsetPagedResult<CategoryDto>>(
+            "api/Category/paged?" + string.Join("&", queryParameters),
+            cancellationToken);
     }
 
     protected override void OnPageLoadSucceeded() => Message = null;
 
     protected override void OnPageLoadFailed(string message) => Message = message;
 
-    private async Task OnSearchTextChangedAsync(string value)
+    private async Task SearchAsync()
     {
-        SearchText = value;
-        await DebounceReloadFromFirstPageAsync(TimeSpan.FromMilliseconds(300));
+        _appliedSearchText = string.IsNullOrWhiteSpace(SearchText)
+            ? null
+            : SearchText.Trim();
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        SearchText = null;
+        _appliedSearchText = null;
+        await ReloadFromFirstPageAsync();
     }
 
     private void OpenCreateDialog()
@@ -201,7 +218,7 @@
         var result = await Api.DeleteAsync<bool>($"api/Category/{id}");
         if (result.IsSuccess)
         {
-            await ReloadCurrentPageAsync();
+            await ReloadAfterDeleteAsync();
             Snackbar.Add(result.Message ?? "Category deleted successfully.", Severity.Success);
         }
         else

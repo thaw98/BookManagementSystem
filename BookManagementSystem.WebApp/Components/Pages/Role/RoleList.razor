@@ -1,6 +1,6 @@
 @page "/roles"
 @attribute [Authorize(Roles = "Admin")]
-@inherits OffsetPagedComponentBase<RoleListDto>
+@inherits ServerPagedComponentBase<RoleListDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -78,16 +78,19 @@
 </EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <MudTextField T="string"
-                  Value="@Filter"
-                  ValueChanged="OnFilterChangedAsync"
-                  Label="Filter by name"
-                  Variant="Variant.Outlined"
-                  Immediate="true"
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search"
-                  Margin="Margin.Dense"
-                  Style="max-width:320px;" />
+    <div class="d-flex align-center gap-2 flex-wrap">
+        <MudTextField T="string"
+                      @bind-Value="Filter"
+                      Label="Filter by name"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Margin="Margin.Dense"
+                      Style="max-width:320px;" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
+    </div>
 </MudPaper>
 
 @if (IsLoading)
@@ -96,10 +99,17 @@
 }
 
 <MudPaper Class="bms-panel" Elevation="0">
-    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+    <MudTable T="RoleListDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
         <HeaderContent>
-            <MudTh>Name</MudTh>
-            <MudTh>Description</MudTh>
+            <MudTh><MudTableSortLabel T="RoleListDto" SortLabel="name">Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="RoleListDto" SortLabel="description">Description</MudTableSortLabel></MudTh>
             <MudTh Style="text-align:right">Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
@@ -124,13 +134,7 @@
             <MudText Class="pa-4 mud-text-secondary">No roles found.</MudText>
         </NoRecordsContent>
         <PagerContent>
-            <OffsetPager PageSize="@PageSize"
-                         TotalCount="@TotalCount"
-                         CurrentPage="@CurrentPage"
-                         PageCount="@PageCount"
-                         IsLoading="@IsLoading"
-                         PageChanged="ChangePageAsync"
-                         PageSizeChanged="ChangePageSizeAsync" />
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
         </PagerContent>
     </MudTable>
 </MudPaper>
@@ -143,33 +147,48 @@
     private bool _editDialogOpen;
     private string? _editReturnFocusId;
     private string? Filter { get; set; }
+    private string? _appliedFilter;
     private string? Message { get; set; }
 
     private string EditRoleSupportingText => _editForm.IsProtected
         ? "Built-in role names cannot be changed. The description is optional."
         : "Update the role name or optional description.";
 
-    protected override async Task OnInitializedAsync() =>
-        await ReloadFromFirstPageAsync();
-
     protected override Task<Result<OffsetPagedResult<RoleListDto>>> FetchPageAsync(
+        TableState state,
         CancellationToken cancellationToken)
     {
-        var url = $"api/Role/paged?page={CurrentPage}&pageSize={PageSize}";
-        if (!string.IsNullOrWhiteSpace(Filter))
-            url += $"&search={Uri.EscapeDataString(Filter.Trim())}";
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+        if (!string.IsNullOrWhiteSpace(_appliedFilter))
+            queryParameters.Add($"search={Uri.EscapeDataString(_appliedFilter)}");
+        AddSortingParameters(queryParameters, state);
 
-        return Api.GetAsync<OffsetPagedResult<RoleListDto>>(url, cancellationToken);
+        return Api.GetAsync<OffsetPagedResult<RoleListDto>>(
+            "api/Role/paged?" + string.Join("&", queryParameters),
+            cancellationToken);
     }
 
     protected override void OnPageLoadSucceeded() => Message = null;
 
     protected override void OnPageLoadFailed(string message) => Message = message;
 
-    private async Task OnFilterChangedAsync(string value)
+    private async Task SearchAsync()
     {
-        Filter = value;
-        await DebounceReloadFromFirstPageAsync(TimeSpan.FromMilliseconds(300));
+        _appliedFilter = string.IsNullOrWhiteSpace(Filter)
+            ? null
+            : Filter.Trim();
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        Filter = null;
+        _appliedFilter = null;
+        await ReloadFromFirstPageAsync();
     }
 
     private void OpenCreateDialog()
@@ -230,7 +249,7 @@
         var result = await Api.DeleteAsync<bool>($"api/Role/{id}");
         if (result.IsSuccess)
         {
-            await ReloadCurrentPageAsync();
+            await ReloadAfterDeleteAsync();
             Snackbar.Add(result.Message ?? "Role deleted successfully.", Severity.Success);
         }
         else

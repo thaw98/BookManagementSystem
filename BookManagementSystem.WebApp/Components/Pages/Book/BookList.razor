@@ -1,6 +1,6 @@
 @page "/books"
 @attribute [Authorize(Roles = "Librarian")]
-@inherits OffsetPagedComponentBase<BookListDto>
+@inherits ServerPagedComponentBase<BookListDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -188,13 +188,20 @@
 }
 
 <MudPaper Class="bms-panel" Elevation="0">
-    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+    <MudTable T="BookListDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
             <HeaderContent>
-                <MudTh>Title</MudTh>
-                <MudTh>Author</MudTh>
-                <MudTh>Category</MudTh>
-                <MudTh>Total</MudTh>
-                <MudTh>Available</MudTh>
+                <MudTh><MudTableSortLabel T="BookListDto" SortLabel="title">Title</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel T="BookListDto" SortLabel="author">Author</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel T="BookListDto" SortLabel="category">Category</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel T="BookListDto" SortLabel="totalCopies">Total</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel T="BookListDto" SortLabel="availableCopies">Available</MudTableSortLabel></MudTh>
                 <MudTh Style="text-align:right">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
@@ -225,13 +232,7 @@
                 <MudText Class="pa-4 mud-text-secondary">No books found.</MudText>
             </NoRecordsContent>
             <PagerContent>
-                <OffsetPager PageSize="@PageSize"
-                             TotalCount="@TotalCount"
-                             CurrentPage="@CurrentPage"
-                             PageCount="@PageCount"
-                             IsLoading="@IsLoading"
-                             PageChanged="ChangePageAsync"
-                             PageSizeChanged="ChangePageSizeAsync" />
+                <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
             </PagerContent>
     </MudTable>
 </MudPaper>
@@ -257,16 +258,16 @@
     {
         await LoadAuthorsAsync();
         await LoadCategoriesAsync();
-        await ReloadFromFirstPageAsync();
     }
 
     protected override Task<Result<OffsetPagedResult<BookListDto>>> FetchPageAsync(
+        TableState state,
         CancellationToken cancellationToken)
     {
         var queryParameters = new List<string>
         {
-            $"page={CurrentPage}",
-            $"pageSize={PageSize}"
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
         };
 
         if (!string.IsNullOrWhiteSpace(_appliedTitleFilter))
@@ -278,6 +279,7 @@
         if (_appliedCategoryFilter > 0)
             queryParameters.Add($"categoryId={_appliedCategoryFilter}");
 
+        AddSortingParameters(queryParameters, state);
         var url = "api/Book/paged?" + string.Join("&", queryParameters);
         return Api.GetAsync<OffsetPagedResult<BookListDto>>(
             url,
@@ -391,7 +393,7 @@
         var result = await Api.DeleteAsync<bool>($"api/Book/{id}");
         if (result.IsSuccess)
         {
-            await ReloadCurrentPageAsync();
+            await ReloadAfterDeleteAsync();
             Snackbar.Add(result.Message ?? "Book deleted successfully.", Severity.Success);
         }
         else

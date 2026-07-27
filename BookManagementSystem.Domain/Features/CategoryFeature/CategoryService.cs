@@ -46,7 +46,7 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
         var page = await Pagination.OffsetPagination.CreateAsync(
             query,
             request,
-            source => source.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            source => ApplyPagedOrdering(source, request),
             x => new CategoryDto
             {
                 Id = x.Id,
@@ -172,4 +172,14 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
 
     private static string NormalizeName(string name) =>
         name.Trim();
+
+    private static IOrderedQueryable<Category> ApplyPagedOrdering(
+        IQueryable<Category> query,
+        CategoryFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("name", true) => query.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("name", false) => query.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Name).ThenBy(x => x.Id)
+        };
 }

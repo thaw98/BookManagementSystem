@@ -54,7 +54,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         var page = await Pagination.OffsetPagination.CreateAsync(
             query,
             request,
-            source => source.OrderBy(x => x.Email).ThenBy(x => x.Id),
+            source => ApplyPagedOrdering(source, request),
             x => new UserListDto
             {
                 Id = x.Id,
@@ -197,4 +197,18 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static IOrderedQueryable<User> ApplyPagedOrdering(
+        IQueryable<User> query,
+        UserFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("email", true) => query.OrderByDescending(x => x.Email).ThenBy(x => x.Id),
+            ("email", false) => query.OrderBy(x => x.Email).ThenBy(x => x.Id),
+            ("role", true) => query.OrderByDescending(x => x.Role.Name).ThenBy(x => x.Id),
+            ("role", false) => query.OrderBy(x => x.Role.Name).ThenBy(x => x.Id),
+            ("active", true) => query.OrderByDescending(x => x.IsActive).ThenBy(x => x.Id),
+            ("active", false) => query.OrderBy(x => x.IsActive).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Email).ThenBy(x => x.Id)
+        };
 }

@@ -46,7 +46,7 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
         var page = await Pagination.OffsetPagination.CreateAsync(
             query,
             request,
-            source => source.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            source => ApplyPagedOrdering(source, request),
             x => new AuthorDto
             {
                 Id = x.Id,
@@ -162,4 +162,14 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
 
     private static string NormalizeName(string name) =>
         name.Trim();
+
+    private static IOrderedQueryable<Author> ApplyPagedOrdering(
+        IQueryable<Author> query,
+        AuthorFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("name", true) => query.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("name", false) => query.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Name).ThenBy(x => x.Id)
+        };
 }

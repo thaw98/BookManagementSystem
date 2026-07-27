@@ -45,7 +45,7 @@ public sealed class BookService(AppDbContext db) : IBookService
         var page = await Pagination.OffsetPagination.CreateAsync(
             query,
             filter,
-            source => source.OrderBy(x => x.Title).ThenBy(x => x.Id),
+            source => ApplyPagedOrdering(source, filter),
             x => new BookListDto
             {
                 Id = x.Id,
@@ -283,4 +283,22 @@ public sealed class BookService(AppDbContext db) : IBookService
 
         return query;
     }
+
+    private static IOrderedQueryable<Book> ApplyPagedOrdering(
+        IQueryable<Book> query,
+        BookFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("title", true) => query.OrderByDescending(x => x.Title).ThenBy(x => x.Id),
+            ("title", false) => query.OrderBy(x => x.Title).ThenBy(x => x.Id),
+            ("author", true) => query.OrderByDescending(x => x.Author.Name).ThenBy(x => x.Id),
+            ("author", false) => query.OrderBy(x => x.Author.Name).ThenBy(x => x.Id),
+            ("category", true) => query.OrderByDescending(x => x.Category.Name).ThenBy(x => x.Id),
+            ("category", false) => query.OrderBy(x => x.Category.Name).ThenBy(x => x.Id),
+            ("totalCopies", true) => query.OrderByDescending(x => x.TotalCopies).ThenBy(x => x.Id),
+            ("totalCopies", false) => query.OrderBy(x => x.TotalCopies).ThenBy(x => x.Id),
+            ("availableCopies", true) => query.OrderByDescending(x => x.AvailableCopies).ThenBy(x => x.Id),
+            ("availableCopies", false) => query.OrderBy(x => x.AvailableCopies).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Title).ThenBy(x => x.Id)
+        };
 }

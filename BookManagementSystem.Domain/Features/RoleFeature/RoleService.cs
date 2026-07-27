@@ -47,7 +47,7 @@ public sealed class RoleService(AppDbContext db) : IRoleService
         var page = await Pagination.OffsetPagination.CreateAsync(
             query,
             request,
-            source => source.OrderBy(x => x.Id),
+            source => ApplyPagedOrdering(source, request),
             x => new RoleListDto
             {
                 Id = x.Id,
@@ -139,4 +139,16 @@ public sealed class RoleService(AppDbContext db) : IRoleService
 
     private static string NormalizeName(string name) => name.Trim();
     private static string? CleanDescription(string? description) => string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+    private static IOrderedQueryable<Role> ApplyPagedOrdering(
+        IQueryable<Role> query,
+        RoleFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("name", true) => query.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("name", false) => query.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            ("description", true) => query.OrderByDescending(x => x.Description).ThenBy(x => x.Id),
+            ("description", false) => query.OrderBy(x => x.Description).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Id)
+        };
 }
