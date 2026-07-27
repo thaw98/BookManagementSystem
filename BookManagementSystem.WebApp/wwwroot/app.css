@@ -861,19 +861,6 @@ button, input, select, textarea {
     margin-right: 8px;
 }
 
-.bms-discard-prompt {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 12px 0 8px;
-    color: var(--text);
-}
-
-.bms-discard-prompt .mud-typography-body2 {
-    color: var(--text-secondary);
-    margin-top: 4px;
-}
-
 .bms-validation-summary {
     color: var(--danger);
     font-size: 0.8rem;
