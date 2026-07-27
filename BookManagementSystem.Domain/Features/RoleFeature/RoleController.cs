@@ -13,6 +13,12 @@ public sealed class RoleController(IRoleService roleService) : BaseController
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
         Execute(await roleService.GetAllAsync(cancellationToken));
 
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] RoleFilterRequest request,
+        CancellationToken cancellationToken) =>
+        Execute(await roleService.GetPagedAsync(request, cancellationToken));
+
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken) =>
         Execute(await roleService.GetByIdAsync(id, cancellationToken));

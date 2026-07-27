@@ -1,5 +1,6 @@
 @page "/users"
 @attribute [Authorize(Roles = "Admin")]
+@inherits OffsetPagedComponentBase<UserListDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -127,7 +128,9 @@
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
     <MudGrid Spacing="2">
         <MudItem xs="12" md="4">
-            <MudTextField @bind-Value="EmailFilter"
+            <MudTextField T="string"
+                          Value="@EmailFilter"
+                          ValueChanged="OnEmailFilterChangedAsync"
                           Label="Filter by email"
                           Variant="Variant.Outlined"
                           Immediate="true"
@@ -136,24 +139,29 @@
                           Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="12" md="3">
-            <MudSelect T="string"
-                       Value="@(RoleFilter ?? string.Empty)"
+            <MudSelect T="long"
+                       Value="@RoleFilterId"
                        ValueChanged="OnRoleFilterChanged"
                        Label="Role"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense">
-                <MudSelectItem Value="@string.Empty">All roles</MudSelectItem>
+                <MudSelectItem T="long" Value="0">All roles</MudSelectItem>
                 @foreach (var role in Roles)
                 {
-                    <MudSelectItem Value="@role.Name">@role.Name</MudSelectItem>
+                    <MudSelectItem T="long" Value="@role.Id">@role.Name</MudSelectItem>
                 }
             </MudSelect>
         </MudItem>
     </MudGrid>
 </MudPaper>
 
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+
 <MudPaper Class="bms-panel" Elevation="0">
-    <MudTable Items="@FilteredUsers.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
         <HeaderContent>
             <MudTh>Email</MudTh>
             <MudTh>Role</MudTh>
@@ -193,12 +201,21 @@
         <NoRecordsContent>
             <MudText Class="pa-4 mud-text-secondary">No users found.</MudText>
         </NoRecordsContent>
+        <PagerContent>
+            <OffsetPager Offset="@Offset"
+                         PageSize="@PageSize"
+                         TotalCount="@TotalCount"
+                         CurrentPage="@CurrentPage"
+                         PageCount="@PageCount"
+                         IsLoading="@IsLoading"
+                         PageChanged="ChangePageAsync"
+                         PageSizeChanged="ChangePageSizeAsync" />
+        </PagerContent>
     </MudTable>
 </MudPaper>
 
 @code {
     private const string AddTriggerId = "add-user-trigger";
-    private List<UserListDto> Users { get; set; } = [];
     private List<RoleListDto> Roles { get; set; } = [];
     private UserCreateForm _createForm = new();
     private UserEditForm _editForm = new();
@@ -210,26 +227,33 @@
     private string? _editReturnFocusId;
     private string? _resetReturnFocusId;
     private string? EmailFilter { get; set; }
-    private string? RoleFilter { get; set; }
+    private long RoleFilterId { get; set; }
     private string? Message { get; set; }
-
-    private IEnumerable<UserListDto> FilteredUsers => Users.Where(x =>
-        (string.IsNullOrWhiteSpace(EmailFilter) || x.Email.Contains(EmailFilter, StringComparison.OrdinalIgnoreCase)) &&
-        (string.IsNullOrWhiteSpace(RoleFilter) || x.RoleName == RoleFilter));
 
     protected override async Task OnInitializedAsync()
     {
         await LoadRolesAsync();
-        await LoadUsersAsync();
+        await ReloadFromFirstPageAsync();
         _createForm = NewCreateForm();
     }
 
-    private async Task LoadUsersAsync()
+    protected override Task<Result<OffsetPagedResult<UserListDto>>> FetchPageAsync(
+        CancellationToken cancellationToken)
     {
-        var result = await Api.GetAsync<List<UserListDto>>("api/User");
-        Users = result.Data ?? [];
-        Message = result.IsSuccess ? Message : result.Message;
+        var url = $"api/User/paged?offset={Offset}&pageSize={PageSize}";
+
+        if (!string.IsNullOrWhiteSpace(EmailFilter))
+            url += $"&email={Uri.EscapeDataString(EmailFilter.Trim())}";
+
+        if (RoleFilterId > 0)
+            url += $"&roleId={RoleFilterId}";
+
+        return Api.GetAsync<OffsetPagedResult<UserListDto>>(url, cancellationToken);
     }
+
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
 
     private async Task LoadRolesAsync()
     {
@@ -238,10 +262,16 @@
         if (!result.IsSuccess) Message = result.Message;
     }
 
-    private Task OnRoleFilterChanged(string value)
+    private async Task OnEmailFilterChangedAsync(string value)
     {
-        RoleFilter = string.IsNullOrWhiteSpace(value) ? null : value;
-        return Task.CompletedTask;
+        EmailFilter = value;
+        await DebounceReloadFromFirstPageAsync(TimeSpan.FromMilliseconds(300));
+    }
+
+    private async Task OnRoleFilterChanged(long value)
+    {
+        RoleFilterId = value;
+        await ReloadFromFirstPageAsync();
     }
 
     private void OpenCreateDialog()
@@ -308,29 +338,36 @@
     private async Task OnUserCreatedAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadUsersAsync();
+        await ReloadFromFirstPageAsync();
         Snackbar.Add(result.Message ?? "User created successfully.", Severity.Success);
     }
 
     private async Task OnUserUpdatedAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadUsersAsync();
+        await ReloadCurrentPageAsync();
         Snackbar.Add(result.Message ?? "User updated successfully.", Severity.Success);
     }
 
     private async Task OnPasswordResetAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadUsersAsync();
+        await ReloadCurrentPageAsync();
         Snackbar.Add(result.Message ?? "Password reset successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
         var result = await Api.DeleteAsync<bool>($"api/User/{id}");
-        Message = result.Message;
-        await LoadUsersAsync();
+        if (result.IsSuccess)
+        {
+            await ReloadCurrentPageAsync();
+            Snackbar.Add(result.Message ?? "User deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
+        }
     }
 
     private UserCreateForm NewCreateForm() => new()

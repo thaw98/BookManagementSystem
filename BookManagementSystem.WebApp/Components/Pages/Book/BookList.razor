@@ -1,5 +1,6 @@
 @page "/books"
 @attribute [Authorize(Roles = "Librarian")]
+@inherits OffsetPagedComponentBase<BookListDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -175,7 +176,7 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="3" Class="d-flex align-center gap-2">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadBooksAsync">Search</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
         </MudItem>
     </MudGrid>
@@ -185,10 +186,9 @@
 {
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
-else
-{
-    <MudPaper Class="bms-panel" Elevation="0">
-        <MudTable Items="@Books" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
             <HeaderContent>
                 <MudTh>Title</MudTh>
                 <MudTh>Author</MudTh>
@@ -224,13 +224,21 @@ else
             <NoRecordsContent>
                 <MudText Class="pa-4 mud-text-secondary">No books found.</MudText>
             </NoRecordsContent>
-        </MudTable>
-    </MudPaper>
-}
+            <PagerContent>
+                <OffsetPager Offset="@Offset"
+                             PageSize="@PageSize"
+                             TotalCount="@TotalCount"
+                             CurrentPage="@CurrentPage"
+                             PageCount="@PageCount"
+                             IsLoading="@IsLoading"
+                             PageChanged="ChangePageAsync"
+                             PageSizeChanged="ChangePageSizeAsync" />
+            </PagerContent>
+    </MudTable>
+</MudPaper>
 
 @code {
     private const string AddTriggerId = "add-book-trigger";
-    private List<BookListDto> Books { get; set; } = [];
     private List<AuthorDto> Authors { get; set; } = [];
     private List<CategoryDto> Categories { get; set; } = [];
     private BookForm _createForm = new() { TotalCopies = 1 };
@@ -241,39 +249,45 @@ else
     private string? TitleFilter { get; set; }
     private string? AuthorFilter { get; set; }
     private long CategoryFilter { get; set; }
+    private string? _appliedTitleFilter;
+    private string? _appliedAuthorFilter;
+    private long _appliedCategoryFilter;
     private string? Message { get; set; }
-    private bool IsLoading { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAuthorsAsync();
         await LoadCategoriesAsync();
-        await LoadBooksAsync();
+        await ReloadFromFirstPageAsync();
     }
 
-    private async Task LoadBooksAsync()
+    protected override Task<Result<OffsetPagedResult<BookListDto>>> FetchPageAsync(
+        CancellationToken cancellationToken)
     {
-        IsLoading = true;
-        var queryParameters = new List<string>();
+        var queryParameters = new List<string>
+        {
+            $"offset={Offset}",
+            $"pageSize={PageSize}"
+        };
 
-        if (!string.IsNullOrWhiteSpace(TitleFilter))
-            queryParameters.Add($"title={Uri.EscapeDataString(TitleFilter.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_appliedTitleFilter))
+            queryParameters.Add($"title={Uri.EscapeDataString(_appliedTitleFilter)}");
 
-        if (!string.IsNullOrWhiteSpace(AuthorFilter))
-            queryParameters.Add($"author={Uri.EscapeDataString(AuthorFilter.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_appliedAuthorFilter))
+            queryParameters.Add($"author={Uri.EscapeDataString(_appliedAuthorFilter)}");
 
-        if (CategoryFilter > 0)
-            queryParameters.Add($"categoryId={CategoryFilter}");
+        if (_appliedCategoryFilter > 0)
+            queryParameters.Add($"categoryId={_appliedCategoryFilter}");
 
-        var url = "api/Book";
-        if (queryParameters.Count > 0)
-            url += "?" + string.Join("&", queryParameters);
-
-        var result = await Api.GetAsync<List<BookListDto>>(url);
-        Books = result.Data ?? [];
-        if (!result.IsSuccess) Message = result.Message;
-        IsLoading = false;
+        var url = "api/Book/paged?" + string.Join("&", queryParameters);
+        return Api.GetAsync<OffsetPagedResult<BookListDto>>(
+            url,
+            cancellationToken);
     }
+
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
 
     private async Task LoadAuthorsAsync()
     {
@@ -317,7 +331,22 @@ else
         TitleFilter = null;
         AuthorFilter = null;
         CategoryFilter = 0;
-        await LoadBooksAsync();
+        _appliedTitleFilter = null;
+        _appliedAuthorFilter = null;
+        _appliedCategoryFilter = 0;
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _appliedTitleFilter = string.IsNullOrWhiteSpace(TitleFilter)
+            ? null
+            : TitleFilter.Trim();
+        _appliedAuthorFilter = string.IsNullOrWhiteSpace(AuthorFilter)
+            ? null
+            : AuthorFilter.Trim();
+        _appliedCategoryFilter = CategoryFilter;
+        await ReloadFromFirstPageAsync();
     }
 
     private async Task<FormSubmitResult> CreateBookAsync(BookForm form)
@@ -347,22 +376,29 @@ else
     private async Task OnBookCreatedAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadBooksAsync();
+        await ReloadFromFirstPageAsync();
         Snackbar.Add(result.Message ?? "Book created successfully.", Severity.Success);
     }
 
     private async Task OnBookUpdatedAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadBooksAsync();
+        await ReloadCurrentPageAsync();
         Snackbar.Add(result.Message ?? "Book updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
         var result = await Api.DeleteAsync<bool>($"api/Book/{id}");
-        Message = result.Message;
-        if (result.IsSuccess) await LoadBooksAsync();
+        if (result.IsSuccess)
+        {
+            await ReloadCurrentPageAsync();
+            Snackbar.Add(result.Message ?? "Book deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
+        }
     }
 
     private static string BorrowedCopiesHelp(BookForm form) =>

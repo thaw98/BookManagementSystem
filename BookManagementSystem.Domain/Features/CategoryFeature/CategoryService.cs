@@ -1,5 +1,6 @@
 ﻿using Contracts;
 using Contracts.Category;
+using Contracts.Pagination;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,34 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
             .ToListAsync(cancellationToken);
 
         return Result<List<CategoryDto>>.Success(categories);
+    }
+
+    public async Task<Result<OffsetPagedResult<CategoryDto>>> GetPagedAsync(
+        CategoryFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Categories
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+            query = query.Where(x => x.Name.Contains(name));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => source.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            x => new CategoryDto
+            {
+                Id = x.Id,
+                Name = x.Name
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<CategoryDto>>.Success(page);
     }
 
     public async Task<Result<CategoryDto>> GetByIdAsync(

@@ -16,3 +16,8 @@ public sealed class UpdateCategoryRequest
 {
     public string Name { get; set; } = "";
 }
+
+public sealed class CategoryFilterRequest : Pagination.OffsetPagedRequest
+{
+    public string? Name { get; set; }
+}

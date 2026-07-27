@@ -1,5 +1,6 @@
 @page "/categories"
 @attribute [Authorize(Roles = "Librarian")]
+@inherits OffsetPagedComponentBase<CategoryDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -63,7 +64,9 @@
 </EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <MudTextField @bind-Value="SearchText"
+    <MudTextField T="string"
+                  Value="@SearchText"
+                  ValueChanged="OnSearchTextChangedAsync"
                   Label="Search category"
                   Variant="Variant.Outlined"
                   Immediate="true"
@@ -77,10 +80,9 @@
 {
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
-else
-{
-    <MudPaper Class="bms-panel" Elevation="0">
-        <MudTable Items="@FilteredCategories.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
             <HeaderContent>
                 <MudTh>Category Name</MudTh>
                 <MudTh Style="text-align:right">Actions</MudTh>
@@ -104,13 +106,21 @@ else
             <NoRecordsContent>
                 <MudText Class="pa-4 mud-text-secondary">No categories found.</MudText>
             </NoRecordsContent>
-        </MudTable>
-    </MudPaper>
-}
+            <PagerContent>
+                <OffsetPager Offset="@Offset"
+                             PageSize="@PageSize"
+                             TotalCount="@TotalCount"
+                             CurrentPage="@CurrentPage"
+                             PageCount="@PageCount"
+                             IsLoading="@IsLoading"
+                             PageChanged="ChangePageAsync"
+                             PageSizeChanged="ChangePageSizeAsync" />
+            </PagerContent>
+    </MudTable>
+</MudPaper>
 
 @code {
     private const string AddTriggerId = "add-category-trigger";
-    private List<CategoryDto> Categories { get; set; } = [];
     private CategoryForm _createForm = new();
     private CategoryForm _editForm = new();
     private bool _createDialogOpen;
@@ -118,25 +128,30 @@ else
     private string? _editReturnFocusId;
     private string? SearchText { get; set; }
     private string? Message { get; set; }
-    private bool IsLoading { get; set; }
-
-    private IEnumerable<CategoryDto> FilteredCategories =>
-        Categories.Where(x =>
-            string.IsNullOrWhiteSpace(SearchText) ||
-            x.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCategoriesAsync();
+        await ReloadFromFirstPageAsync();
     }
 
-    private async Task LoadCategoriesAsync()
+    protected override Task<Result<OffsetPagedResult<CategoryDto>>> FetchPageAsync(
+        CancellationToken cancellationToken)
     {
-        IsLoading = true;
-        var result = await Api.GetAsync<List<CategoryDto>>("api/Category");
-        Categories = result.Data ?? [];
-        if (!result.IsSuccess) Message = result.Message;
-        IsLoading = false;
+        var url = $"api/Category/paged?offset={Offset}&pageSize={PageSize}";
+        if (!string.IsNullOrWhiteSpace(SearchText))
+            url += $"&name={Uri.EscapeDataString(SearchText.Trim())}";
+
+        return Api.GetAsync<OffsetPagedResult<CategoryDto>>(url, cancellationToken);
+    }
+
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
+
+    private async Task OnSearchTextChangedAsync(string value)
+    {
+        SearchText = value;
+        await DebounceReloadFromFirstPageAsync(TimeSpan.FromMilliseconds(300));
     }
 
     private void OpenCreateDialog()
@@ -171,22 +186,29 @@ else
     private async Task OnCategoryCreatedAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadCategoriesAsync();
+        await ReloadFromFirstPageAsync();
         Snackbar.Add(result.Message ?? "Category created successfully.", Severity.Success);
     }
 
     private async Task OnCategoryUpdatedAsync(FormSubmitResult result)
     {
         Message = null;
-        await LoadCategoriesAsync();
+        await ReloadCurrentPageAsync();
         Snackbar.Add(result.Message ?? "Category updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
         var result = await Api.DeleteAsync<bool>($"api/Category/{id}");
-        Message = result.Message;
-        if (result.IsSuccess) await LoadCategoriesAsync();
+        if (result.IsSuccess)
+        {
+            await ReloadCurrentPageAsync();
+            Snackbar.Add(result.Message ?? "Category deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
+        }
     }
 
     private static string EditTriggerId(long id) => $"edit-category-{id}";

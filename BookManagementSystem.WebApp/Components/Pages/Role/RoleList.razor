@@ -1,5 +1,6 @@
 @page "/roles"
 @attribute [Authorize(Roles = "Admin")]
+@inherits OffsetPagedComponentBase<RoleListDto>
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -77,7 +78,9 @@
 </EditEntityDialog>
 
 <MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
-    <MudTextField @bind-Value="Filter"
+    <MudTextField T="string"
+                  Value="@Filter"
+                  ValueChanged="OnFilterChangedAsync"
                   Label="Filter by name"
                   Variant="Variant.Outlined"
                   Immediate="true"
@@ -87,8 +90,13 @@
                   Style="max-width:320px;" />
 </MudPaper>
 
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+
 <MudPaper Class="bms-panel" Elevation="0">
-    <MudTable Items="@FilteredRoles.ToList()" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
+    <MudTable Items="@PageItems" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Class="bms-table">
         <HeaderContent>
             <MudTh>Name</MudTh>
             <MudTh>Description</MudTh>
@@ -115,12 +123,21 @@
         <NoRecordsContent>
             <MudText Class="pa-4 mud-text-secondary">No roles found.</MudText>
         </NoRecordsContent>
+        <PagerContent>
+            <OffsetPager Offset="@Offset"
+                         PageSize="@PageSize"
+                         TotalCount="@TotalCount"
+                         CurrentPage="@CurrentPage"
+                         PageCount="@PageCount"
+                         IsLoading="@IsLoading"
+                         PageChanged="ChangePageAsync"
+                         PageSizeChanged="ChangePageSizeAsync" />
+        </PagerContent>
     </MudTable>
 </MudPaper>
 
 @code {
     private const string AddTriggerId = "add-role-trigger";
-    private List<RoleListDto> Roles { get; set; } = [];
     private RoleForm _createForm = new();
     private RoleForm _editForm = new();
     private bool _createDialogOpen;
@@ -133,16 +150,27 @@
         ? "Built-in role names cannot be changed. The description is optional."
         : "Update the role name or optional description.";
 
-    private IEnumerable<RoleListDto> FilteredRoles =>
-        Roles.Where(x => string.IsNullOrWhiteSpace(Filter) || x.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase));
+    protected override async Task OnInitializedAsync() =>
+        await ReloadFromFirstPageAsync();
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    private async Task LoadAsync()
+    protected override Task<Result<OffsetPagedResult<RoleListDto>>> FetchPageAsync(
+        CancellationToken cancellationToken)
     {
-        var result = await Api.GetAsync<List<RoleListDto>>("api/Role");
-        Roles = result.Data ?? [];
-        Message = result.IsSuccess ? null : result.Message;
+        var url = $"api/Role/paged?offset={Offset}&pageSize={PageSize}";
+        if (!string.IsNullOrWhiteSpace(Filter))
+            url += $"&name={Uri.EscapeDataString(Filter.Trim())}";
+
+        return Api.GetAsync<OffsetPagedResult<RoleListDto>>(url, cancellationToken);
+    }
+
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
+
+    private async Task OnFilterChangedAsync(string value)
+    {
+        Filter = value;
+        await DebounceReloadFromFirstPageAsync(TimeSpan.FromMilliseconds(300));
     }
 
     private void OpenCreateDialog()
@@ -188,21 +216,28 @@
 
     private async Task OnRoleCreatedAsync(FormSubmitResult result)
     {
-        await LoadAsync();
+        await ReloadFromFirstPageAsync();
         Snackbar.Add(result.Message ?? "Role created successfully.", Severity.Success);
     }
 
     private async Task OnRoleUpdatedAsync(FormSubmitResult result)
     {
-        await LoadAsync();
+        await ReloadCurrentPageAsync();
         Snackbar.Add(result.Message ?? "Role updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
         var result = await Api.DeleteAsync<bool>($"api/Role/{id}");
-        Message = result.Message;
-        await LoadAsync();
+        if (result.IsSuccess)
+        {
+            await ReloadCurrentPageAsync();
+            Snackbar.Add(result.Message ?? "Role deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
+        }
     }
 
     private static string EditTriggerId(long id) => $"edit-role-{id}";

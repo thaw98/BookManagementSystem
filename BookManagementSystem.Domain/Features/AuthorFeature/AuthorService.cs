@@ -1,5 +1,6 @@
 ﻿using Contracts;
 using Contracts.Author;
+using Contracts.Pagination;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,34 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
             .ToListAsync(cancellationToken);
 
         return Result<List<AuthorDto>>.Success(authors);
+    }
+
+    public async Task<Result<OffsetPagedResult<AuthorDto>>> GetPagedAsync(
+        AuthorFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Authors
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+            query = query.Where(x => x.Name.Contains(name));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => source.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            x => new AuthorDto
+            {
+                Id = x.Id,
+                Name = x.Name
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<AuthorDto>>.Success(page);
     }
 
     public async Task<Result<AuthorDto>> GetByIdAsync(

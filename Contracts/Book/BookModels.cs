@@ -52,7 +52,7 @@ public sealed class UpdateBookRequest
     public int TotalCopies { get; set; }
 }
 
-public sealed class BookFilterRequest
+public sealed class BookFilterRequest : Pagination.OffsetPagedRequest
 {
     public string? Title { get; set; }
 

@@ -1,11 +1,16 @@
 ﻿using Contracts;
 using Contracts.Book;
+using Contracts.Pagination;
 
 namespace BookManagementSystem.Domain.Features.BookFeature;
 
 public interface IBookService
 {
     Task<Result<List<BookListDto>>> GetAllAsync(
+        BookFilterRequest filter,
+        CancellationToken cancellationToken);
+
+    Task<Result<OffsetPagedResult<BookListDto>>> GetPagedAsync(
         BookFilterRequest filter,
         CancellationToken cancellationToken);
 

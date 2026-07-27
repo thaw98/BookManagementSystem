@@ -1,5 +1,6 @@
 using Contracts;
 using Contracts.User;
+using Contracts.Pagination;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Auth;
@@ -26,6 +27,41 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             .ToListAsync(cancellationToken);
 
         return Result<List<UserListDto>>.Success(users);
+    }
+
+    public async Task<Result<OffsetPagedResult<UserListDto>>> GetPagedAsync(
+        UserFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Users
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim();
+            query = query.Where(x => x.Email.Contains(email));
+        }
+
+        if (request.RoleId.HasValue)
+            query = query.Where(x => x.RoleId == request.RoleId.Value);
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => source.OrderBy(x => x.Email).ThenBy(x => x.Id),
+            x => new UserListDto
+            {
+                Id = x.Id,
+                Email = x.Email,
+                RoleId = x.RoleId,
+                RoleName = x.Role.Name,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<UserListDto>>.Success(page);
     }
 
     public async Task<Result<UserDetailDto>> GetByIdAsync(long id, CancellationToken cancellationToken)

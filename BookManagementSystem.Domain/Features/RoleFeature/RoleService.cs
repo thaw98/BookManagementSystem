@@ -1,5 +1,6 @@
 using Contracts;
 using Contracts.Role;
+using Contracts.Pagination;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -22,6 +23,38 @@ public sealed class RoleService(AppDbContext db) : IRoleService
             .ToListAsync(cancellationToken);
 
         return Result<List<RoleListDto>>.Success(roles);
+    }
+
+    public async Task<Result<OffsetPagedResult<RoleListDto>>> GetPagedAsync(
+        RoleFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Roles
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+            query = query.Where(x => x.Name.Contains(name));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => source.OrderBy(x => x.Id),
+            x => new RoleListDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description,
+                IsProtected = x.Id == RoleNames.AdminId ||
+                    x.Id == RoleNames.LibrarianId ||
+                    x.Id == RoleNames.LibraryMemberId
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<RoleListDto>>.Success(page);
     }
 
     public async Task<Result<RoleDetailDto>> GetByIdAsync(long id, CancellationToken cancellationToken)

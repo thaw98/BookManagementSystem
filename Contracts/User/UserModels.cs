@@ -36,3 +36,10 @@ public sealed class ResetPasswordRequest
 {
     public string Password { get; set; } = "";
 }
+
+public sealed class UserFilterRequest : Pagination.OffsetPagedRequest
+{
+    public string? Email { get; set; }
+
+    public long? RoleId { get; set; }
+}

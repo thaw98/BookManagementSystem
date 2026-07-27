@@ -1,11 +1,16 @@
 ﻿using Contracts;
 using Contracts.Author;
+using Contracts.Pagination;
 
 namespace BookManagementSystem.Domain.Features.AuthorFeature;
 
 public interface IAuthorService
 {
     Task<Result<List<AuthorDto>>> GetAllAsync(
+        CancellationToken cancellationToken);
+
+    Task<Result<OffsetPagedResult<AuthorDto>>> GetPagedAsync(
+        AuthorFilterRequest request,
         CancellationToken cancellationToken);
 
     Task<Result<AuthorDto>> GetByIdAsync(

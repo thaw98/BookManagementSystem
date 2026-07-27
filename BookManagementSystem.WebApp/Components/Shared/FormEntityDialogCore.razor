@@ -17,6 +17,7 @@
                            Size="Size.Small"
                            Disabled="@_isSaving"
                            OnClick="RequestCloseAsync"
+                           @onmousedown:preventDefault="true"
                            aria-label="@($"Close {DialogTitle}")" />
         </div>
     </TitleContent>
@@ -60,7 +61,8 @@
                    Variant="Variant.Outlined"
                    Color="Color.Default"
                    Disabled="@_isSaving"
-                   OnClick="RequestCloseAsync">
+                   OnClick="RequestCloseAsync"
+                   @onmousedown:preventDefault="true">
             Cancel
         </MudButton>
         <MudButton ButtonType="ButtonType.Submit"
@@ -232,6 +234,7 @@
     private async Task CloseImmediatelyAsync(bool restoreFocus = true)
     {
         _apiError = null;
+        _focusInvalidAfterRender = false;
         _wasOpen = false;
         _restoreFocusAfterRender = restoreFocus;
         await IsOpenChanged.InvokeAsync(false);
