@@ -1,5 +1,5 @@
-using Contracts;
 using Contracts.Auth;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Auth;

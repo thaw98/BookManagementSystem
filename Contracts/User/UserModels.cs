@@ -37,7 +37,7 @@ public sealed class ResetPasswordRequest
     public string Password { get; set; } = "";
 }
 
-public sealed class UserFilterRequest : Pagination.OffsetPagedRequest
+public sealed class UserFilterRequest : Shared.Models.OffsetPagedRequest
 {
     public string? Email { get; set; }
 

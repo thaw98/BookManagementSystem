@@ -1,7 +1,7 @@
-using Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Models;
 
 namespace Shared.Base;
 

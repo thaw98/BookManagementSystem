@@ -1,5 +1,5 @@
-using Contracts;
 using Contracts.Auth;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.AuthFeature;
 

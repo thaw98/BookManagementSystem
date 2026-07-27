@@ -1,6 +1,5 @@
-﻿using Contracts;
-using Contracts.Category;
-using Contracts.Pagination;
+﻿using Contracts.Category;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,6 +35,12 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
         {
             var name = request.Name.Trim();
             query = query.Where(x => x.Name.Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Name.Contains(search));
         }
 
         var page = await Pagination.OffsetPagination.CreateAsync(

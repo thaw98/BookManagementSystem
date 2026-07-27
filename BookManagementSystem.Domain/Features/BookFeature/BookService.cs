@@ -1,6 +1,5 @@
-﻿using Contracts;
-using Contracts.Book;
-using Contracts.Pagination;
+﻿using Contracts.Book;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -259,6 +258,14 @@ public sealed class BookService(AppDbContext db) : IBookService
         IQueryable<Book> query,
         BookFilterRequest filter)
     {
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim();
+            query = query.Where(x =>
+                x.Title.Contains(search) ||
+                x.Author.Name.Contains(search));
+        }
+
         if (!string.IsNullOrWhiteSpace(filter.Title))
         {
             var title = filter.Title.Trim();

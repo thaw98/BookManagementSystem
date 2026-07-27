@@ -124,8 +124,7 @@
             <MudText Class="pa-4 mud-text-secondary">No roles found.</MudText>
         </NoRecordsContent>
         <PagerContent>
-            <OffsetPager Offset="@Offset"
-                         PageSize="@PageSize"
+            <OffsetPager PageSize="@PageSize"
                          TotalCount="@TotalCount"
                          CurrentPage="@CurrentPage"
                          PageCount="@PageCount"
@@ -156,9 +155,9 @@
     protected override Task<Result<OffsetPagedResult<RoleListDto>>> FetchPageAsync(
         CancellationToken cancellationToken)
     {
-        var url = $"api/Role/paged?offset={Offset}&pageSize={PageSize}";
+        var url = $"api/Role/paged?page={CurrentPage}&pageSize={PageSize}";
         if (!string.IsNullOrWhiteSpace(Filter))
-            url += $"&name={Uri.EscapeDataString(Filter.Trim())}";
+            url += $"&search={Uri.EscapeDataString(Filter.Trim())}";
 
         return Api.GetAsync<OffsetPagedResult<RoleListDto>>(url, cancellationToken);
     }

@@ -1,6 +1,5 @@
-﻿using Contracts;
-using Contracts.Category;
-using Contracts.Pagination;
+﻿using Contracts.Category;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.CategoryFeature;
 

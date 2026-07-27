@@ -1,5 +1,4 @@
-using Contracts;
-using Contracts.Pagination;
+using Shared.Models;
 using Microsoft.AspNetCore.Components;
 
 namespace WebApp.Components.Base;
@@ -11,15 +10,11 @@ public abstract class OffsetPagedComponentBase<TItem> : ComponentBase, IAsyncDis
     private long _requestVersion;
     private bool _disposed;
 
-    protected int Offset { get; private set; }
-
     protected int PageSize { get; private set; } = 10;
 
     protected int TotalCount { get; private set; }
 
-    protected int CurrentPage => TotalCount == 0
-        ? 1
-        : (Offset / PageSize) + 1;
+    protected int CurrentPage { get; private set; } = 1;
 
     protected int PageCount => Math.Max(
         1,
@@ -74,7 +69,7 @@ public abstract class OffsetPagedComponentBase<TItem> : ComponentBase, IAsyncDis
             }
             else
             {
-                Offset = 0;
+                CurrentPage = 1;
                 TotalCount = 0;
                 PageItems = [];
                 OnPageLoadFailed(result.Message);
@@ -95,19 +90,18 @@ public abstract class OffsetPagedComponentBase<TItem> : ComponentBase, IAsyncDis
 
     protected Task ReloadFromFirstPageAsync()
     {
-        Offset = 0;
+        CurrentPage = 1;
         return ReloadCurrentPageAsync();
     }
 
     protected async Task ChangePageAsync(int page)
     {
         var normalizedPage = Math.Clamp(page, 1, PageCount);
-        var newOffset = (normalizedPage - 1) * PageSize;
 
-        if (newOffset == Offset)
+        if (normalizedPage == CurrentPage)
             return;
 
-        Offset = newOffset;
+        CurrentPage = normalizedPage;
         await ReloadCurrentPageAsync();
     }
 
@@ -117,7 +111,7 @@ public abstract class OffsetPagedComponentBase<TItem> : ComponentBase, IAsyncDis
             return;
 
         PageSize = pageSize;
-        Offset = 0;
+        CurrentPage = 1;
         await ReloadCurrentPageAsync();
     }
 
@@ -147,7 +141,7 @@ public abstract class OffsetPagedComponentBase<TItem> : ComponentBase, IAsyncDis
 
     private void ApplyPagingMetadata(OffsetPagedResult<TItem> page)
     {
-        Offset = Math.Max(0, page.Offset);
+        CurrentPage = Math.Max(1, page.Page);
         PageSize = page.PageSize > 0 ? page.PageSize : 10;
         TotalCount = Math.Max(0, page.TotalCount);
     }

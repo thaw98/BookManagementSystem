@@ -1,6 +1,5 @@
-using Contracts;
 using Contracts.Role;
-using Contracts.Pagination;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -37,6 +36,12 @@ public sealed class RoleService(AppDbContext db) : IRoleService
         {
             var name = request.Name.Trim();
             query = query.Where(x => x.Name.Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Name.Contains(search));
         }
 
         var page = await Pagination.OffsetPagination.CreateAsync(

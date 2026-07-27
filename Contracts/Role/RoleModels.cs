@@ -28,7 +28,7 @@ public sealed class UpdateRoleRequest
     public string? Description { get; set; }
 }
 
-public sealed class RoleFilterRequest : Pagination.OffsetPagedRequest
+public sealed class RoleFilterRequest : Shared.Models.OffsetPagedRequest
 {
     public string? Name { get; set; }
 }

@@ -17,7 +17,7 @@ public sealed class UpdateAuthorRequest
     public string Name { get; set; } = "";
 }
 
-public sealed class AuthorFilterRequest : Pagination.OffsetPagedRequest
+public sealed class AuthorFilterRequest : Shared.Models.OffsetPagedRequest
 {
     public string? Name { get; set; }
 }

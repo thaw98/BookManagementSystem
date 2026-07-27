@@ -1,6 +1,5 @@
-using Contracts;
 using Contracts.User;
-using Contracts.Pagination;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Auth;
@@ -41,6 +40,12 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         {
             var email = request.Email.Trim();
             query = query.Where(x => x.Email.Contains(email));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Email.Contains(search));
         }
 
         if (request.RoleId.HasValue)

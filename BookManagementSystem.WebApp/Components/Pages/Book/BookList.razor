@@ -225,8 +225,7 @@
                 <MudText Class="pa-4 mud-text-secondary">No books found.</MudText>
             </NoRecordsContent>
             <PagerContent>
-                <OffsetPager Offset="@Offset"
-                             PageSize="@PageSize"
+                <OffsetPager PageSize="@PageSize"
                              TotalCount="@TotalCount"
                              CurrentPage="@CurrentPage"
                              PageCount="@PageCount"
@@ -266,7 +265,7 @@
     {
         var queryParameters = new List<string>
         {
-            $"offset={Offset}",
+            $"page={CurrentPage}",
             $"pageSize={PageSize}"
         };
 

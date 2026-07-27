@@ -1,14 +1,11 @@
 using System.Linq.Expressions;
-using Contracts.Pagination;
 using Microsoft.EntityFrameworkCore;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Pagination;
 
 internal static class OffsetPagination
 {
-    private const int DefaultPageSize = 10;
-    private const int MaximumPageSize = 100;
-
     public static async Task<OffsetPagedResult<TResult>> CreateAsync<TEntity, TResult>(
         IQueryable<TEntity> filteredQuery,
         OffsetPagedRequest request,
@@ -16,10 +13,7 @@ internal static class OffsetPagination
         Expression<Func<TEntity, TResult>> selector,
         CancellationToken cancellationToken)
     {
-        var pageSize = request.PageSize <= 0
-            ? DefaultPageSize
-            : Math.Min(request.PageSize, MaximumPageSize);
-        var offset = Math.Max(request.Offset, 0);
+        var pageSize = request.PageSize;
         var totalCount = await filteredQuery.CountAsync(cancellationToken);
 
         if (totalCount == 0)
@@ -27,13 +21,14 @@ internal static class OffsetPagination
             return new OffsetPagedResult<TResult>
             {
                 TotalCount = 0,
-                Offset = 0,
+                Page = 1,
                 PageSize = pageSize
             };
         }
 
-        if (offset >= totalCount)
-            offset = ((totalCount - 1) / pageSize) * pageSize;
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        var page = Math.Min(request.Page, totalPages);
+        var offset = (page - 1) * pageSize;
 
         var items = await orderBy(filteredQuery)
             .Skip(offset)
@@ -45,7 +40,7 @@ internal static class OffsetPagination
         {
             Items = items,
             TotalCount = totalCount,
-            Offset = offset,
+            Page = page,
             PageSize = pageSize
         };
     }

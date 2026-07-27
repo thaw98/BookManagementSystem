@@ -107,8 +107,7 @@
                 <MudText Class="pa-4 mud-text-secondary">No authors found.</MudText>
             </NoRecordsContent>
             <PagerContent>
-                <OffsetPager Offset="@Offset"
-                             PageSize="@PageSize"
+                <OffsetPager PageSize="@PageSize"
                              TotalCount="@TotalCount"
                              CurrentPage="@CurrentPage"
                              PageCount="@PageCount"
@@ -137,9 +136,9 @@
     protected override Task<Result<OffsetPagedResult<AuthorDto>>> FetchPageAsync(
         CancellationToken cancellationToken)
     {
-        var url = $"api/Author/paged?offset={Offset}&pageSize={PageSize}";
+        var url = $"api/Author/paged?page={CurrentPage}&pageSize={PageSize}";
         if (!string.IsNullOrWhiteSpace(SearchText))
-            url += $"&name={Uri.EscapeDataString(SearchText.Trim())}";
+            url += $"&search={Uri.EscapeDataString(SearchText.Trim())}";
 
         return Api.GetAsync<OffsetPagedResult<AuthorDto>>(url, cancellationToken);
     }

@@ -59,7 +59,6 @@
 @code {
     private readonly string _pageSizeId = $"page-size-{Guid.NewGuid():N}";
 
-    [Parameter] public int Offset { get; set; }
     [Parameter] public int PageSize { get; set; } = 10;
     [Parameter] public int TotalCount { get; set; }
     [Parameter] public int CurrentPage { get; set; } = 1;
@@ -70,7 +69,7 @@
 
     private string RangeText => TotalCount == 0
         ? "Showing 0–0 of 0"
-        : $"Showing {Offset + 1}–{Math.Min(Offset + PageSize, TotalCount)} of {TotalCount}";
+        : $"Showing {(CurrentPage - 1) * PageSize + 1}–{Math.Min(CurrentPage * PageSize, TotalCount)} of {TotalCount}";
 
     private IEnumerable<int?> VisiblePages
     {
