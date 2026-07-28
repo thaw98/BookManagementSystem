@@ -26,9 +26,10 @@
                     <MudMenu AnchorOrigin="Origin.BottomRight"
                              TransformOrigin="Origin.TopRight"
                              PopoverClass="profile-menu-panel">
-                    <ActivatorContent>
+                    <ActivatorContent Context="context">
                         <MudButton Variant="Variant.Text"
                                    Class="profile-trigger"
+                                   OnClick="@context.ToggleAsync"
                                    aria-label="Open profile menu">
                             <MudAvatar Size="Size.Small" Color="Color.Primary">
                                 @GetInitial(auth.User)
