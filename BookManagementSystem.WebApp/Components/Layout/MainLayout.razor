@@ -22,9 +22,18 @@
         <MudSpacer />
         <AuthorizeView>
             <Authorized Context="auth">
-                <MudMenu AnchorOrigin="Origin.BottomRight"
-                         TransformOrigin="Origin.TopRight"
-                         Class="profile-menu-panel">
+                <div class="topbar-actions">
+                    <form method="post" action="/account/logout" class="topbar-logout-form">
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Text"
+                                   StartIcon="@Icons.Material.Filled.Logout"
+                                   Class="topbar-logout-button">
+                            Logout
+                        </MudButton>
+                    </form>
+                    <MudMenu AnchorOrigin="Origin.BottomRight"
+                             TransformOrigin="Origin.TopRight"
+                             Class="profile-menu-panel">
                     <ActivatorContent>
                         <MudButton Variant="Variant.Text" Class="profile-trigger">
                             <MudAvatar Size="Size.Small" Color="Color.Primary">
@@ -65,7 +74,8 @@
                             </MudButton>
                         </form>
                     </ChildContent>
-                </MudMenu>
+                    </MudMenu>
+                </div>
             </Authorized>
         </AuthorizeView>
     </MudAppBar>
