@@ -1,6 +1,7 @@
 @page "/users"
 @attribute [Authorize(Roles = "Admin")]
 @inherits ServerPagedComponentBase<UserListDto>
+@using System.Security.Claims
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
@@ -194,23 +195,38 @@
                 </span>
             </MudTd>
             <MudTd DataLabel="Actions" Style="text-align:right">
-                <MudIconButton id="@EditTriggerId(context.Id)"
-                               Icon="@Icons.Material.Filled.Edit"
-                               Size="Size.Small"
-                               Color="Color.Primary"
-                               OnClick="() => OpenEditDialog(context)"
-                               aria-label="@($"Edit {context.Email}")" />
-                <MudIconButton id="@ResetTriggerId(context.Id)"
-                               Icon="@Icons.Material.Filled.LockReset"
-                               Size="Size.Small"
-                               Color="Color.Warning"
-                               OnClick="() => OpenResetDialog(context)"
-                               aria-label="@($"Reset password for {context.Email}")" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                               Size="Size.Small"
-                               Color="Color.Error"
-                               OnClick="() => DeleteAsync(context.Id)"
-                               aria-label="@($"Delete {context.Email}")" />
+                @if (_authenticatedUserId == context.Id)
+                {
+                    <span class="d-inline-flex align-center gap-1 mud-text-secondary"
+                          aria-label="Actions are locked for your own account."
+                          title="Actions are locked for your own account.">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock"
+                                 Size="Size.Small"
+                                 Color="Color.Default"
+                                 aria-hidden="true" />
+                        <span>Locked</span>
+                    </span>
+                }
+                else
+                {
+                    <MudIconButton id="@EditTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="() => OpenEditDialog(context)"
+                                   aria-label="@($"Edit {context.Email}")" />
+                    <MudIconButton id="@ResetTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.LockReset"
+                                   Size="Size.Small"
+                                   Color="Color.Warning"
+                                   OnClick="() => OpenResetDialog(context)"
+                                   aria-label="@($"Reset password for {context.Email}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteAsync(context.Id)"
+                                   aria-label="@($"Delete {context.Email}")" />
+                }
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
@@ -224,7 +240,11 @@
 
 @code {
     private const string AddTriggerId = "add-user-trigger";
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
+
     private List<RoleListDto> Roles { get; set; } = [];
+    private long? _authenticatedUserId;
     private UserCreateForm _createForm = new();
     private UserEditForm _editForm = new();
     private bool _createDialogOpen;
@@ -242,6 +262,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authenticationState = await AuthenticationStateTask;
+        var userIdClaim = authenticationState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        _authenticatedUserId = long.TryParse(userIdClaim, out var userId) ? userId : null;
+
         await LoadRolesAsync();
         _createForm = NewCreateForm();
     }
