@@ -1,0 +1,63 @@
+@page "/profile"
+@attribute [Authorize]
+@using System.Security.Claims
+
+<PageTitle>Profile — BMS</PageTitle>
+
+<section class="profile-page" aria-labelledby="profile-heading">
+    <div class="page-header">
+        <div>
+            <h1 id="profile-heading" class="page-title">Profile</h1>
+            <p class="page-subtitle">Your account and access details</p>
+        </div>
+    </div>
+
+    <AuthorizeView>
+        <Authorized Context="auth">
+            @{
+                var email = auth.User.FindFirst(ClaimTypes.Email)?.Value ?? "User";
+                var role = auth.User.FindFirst(ClaimTypes.Role)?.Value ?? "User";
+                var initial = string.IsNullOrWhiteSpace(email)
+                    ? "U"
+                    : email[0].ToString().ToUpperInvariant();
+                var roleClass = role.ToLowerInvariant() switch
+                {
+                    "admin" => "admin",
+                    "librarian" => "librarian",
+                    _ => "member"
+                };
+            }
+
+            <MudPaper Class="bms-panel profile-card" Elevation="0">
+                <div class="profile-card-hero">
+                    <MudAvatar Class="profile-page-avatar" aria-label="@($"{email} avatar")">
+                        @initial
+                    </MudAvatar>
+                    <div class="profile-card-identity">
+                        <div class="profile-card-email">@email</div>
+                        <span class="role-badge @roleClass">@role</span>
+                    </div>
+                </div>
+
+                <MudDivider />
+
+                <dl class="profile-details">
+                    <div class="profile-detail-row">
+                        <dt>
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" />
+                            Email
+                        </dt>
+                        <dd>@email</dd>
+                    </div>
+                    <div class="profile-detail-row">
+                        <dt>
+                            <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" />
+                            Role
+                        </dt>
+                        <dd><span class="role-badge @roleClass">@role</span></dd>
+                    </div>
+                </dl>
+            </MudPaper>
+        </Authorized>
+    </AuthorizeView>
+</section>

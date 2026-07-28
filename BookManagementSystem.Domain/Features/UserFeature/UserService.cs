@@ -10,6 +10,8 @@ namespace BookManagementSystem.Domain.Features.UserFeature;
 
 public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher, IBaseService baseService) : IUserService
 {
+    private const string SelfAccountActionsLockedMessage = "Actions are locked for your own account.";
+
     public async Task<Result<List<UserListDto>>> GetAllAsync(CancellationToken cancellationToken)
     {
         var users = await db.Users.AsNoTracking()
@@ -118,6 +120,9 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<UserDetailDto>> UpdateAsync(long id, UpdateUserRequest request, CancellationToken cancellationToken)
     {
+        if (baseService.UserId == id)
+            return Result<UserDetailDto>.Forbidden(SelfAccountActionsLockedMessage);
+
         var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null)
             return Result<UserDetailDto>.NotFound();
@@ -131,10 +136,6 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
         if (await db.Users.AnyAsync(x => x.Id != id && x.Email == email, cancellationToken))
             return Result<UserDetailDto>.Duplicate("Email already exists.");
-
-        var currentUserId = baseService.UserId;
-        if (currentUserId == id && !request.IsActive)
-            return Result<UserDetailDto>.Validation("You cannot deactivate your own account.");
 
         var removesAdmin = user.RoleId == RoleNames.AdminId && (request.RoleId != RoleNames.AdminId || !request.IsActive);
         if (removesAdmin && !await HasAnotherActiveAdminAsync(id, cancellationToken))
@@ -154,6 +155,9 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<bool>> ResetPasswordAsync(long id, ResetPasswordRequest request, CancellationToken cancellationToken)
     {
+        if (baseService.UserId == id)
+            return Result<bool>.Forbidden(SelfAccountActionsLockedMessage);
+
         if (string.IsNullOrWhiteSpace(request.Password))
             return Result<bool>.Validation("Password is required.");
 
@@ -169,12 +173,12 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<bool>> DeleteAsync(long id, CancellationToken cancellationToken)
     {
+        if (baseService.UserId == id)
+            return Result<bool>.Forbidden(SelfAccountActionsLockedMessage);
+
         var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null)
             return Result<bool>.NotFound();
-
-        if (baseService.UserId == id)
-            return Result<bool>.Validation("You cannot delete your own account.");
 
         if (user.RoleId == RoleNames.AdminId && !await HasAnotherActiveAdminAsync(id, cancellationToken))
             return Result<bool>.Validation("The system must keep at least one active Admin.");
