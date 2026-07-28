@@ -1,5 +1,5 @@
-﻿using Contracts;
-using Contracts.Author;
+﻿using Contracts.Author;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +21,40 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
             .ToListAsync(cancellationToken);
 
         return Result<List<AuthorDto>>.Success(authors);
+    }
+
+    public async Task<Result<OffsetPagedResult<AuthorDto>>> GetPagedAsync(
+        AuthorFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Authors
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+            query = query.Where(x => x.Name.Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Name.Contains(search));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyPagedOrdering(source, request),
+            x => new AuthorDto
+            {
+                Id = x.Id,
+                Name = x.Name
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<AuthorDto>>.Success(page);
     }
 
     public async Task<Result<AuthorDto>> GetByIdAsync(
@@ -128,4 +162,14 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
 
     private static string NormalizeName(string name) =>
         name.Trim();
+
+    private static IOrderedQueryable<Author> ApplyPagedOrdering(
+        IQueryable<Author> query,
+        AuthorFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("name", true) => query.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("name", false) => query.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Name).ThenBy(x => x.Id)
+        };
 }

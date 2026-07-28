@@ -1,5 +1,43 @@
 @inherits LayoutComponentBase
 
-<main class="container py-5">
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="login-page">
     @Body
-</main>
+</div>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2563eb",
+            PrimaryContrastText = "#ffffff",
+            Background = "#f3f4f6",
+            Surface = "#ffffff",
+            Error = "#ef4444",
+            TextPrimary = "#111827",
+            TextSecondary = "#6b7280"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"]
+            },
+            Button = new ButtonTypography
+            {
+                FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"],
+                FontWeight = "600",
+                TextTransform = "none"
+            }
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "10px"
+        }
+    };
+}

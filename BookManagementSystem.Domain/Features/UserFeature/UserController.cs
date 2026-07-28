@@ -13,6 +13,12 @@ public sealed class UserController(IUserService userService) : BaseController
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
         Execute(await userService.GetAllAsync(cancellationToken));
 
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] UserFilterRequest request,
+        CancellationToken cancellationToken) =>
+        Execute(await userService.GetPagedAsync(request, cancellationToken));
+
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken) =>
         Execute(await userService.GetByIdAsync(id, cancellationToken));

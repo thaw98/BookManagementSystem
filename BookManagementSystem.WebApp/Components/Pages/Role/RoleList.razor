@@ -1,109 +1,287 @@
 @page "/roles"
 @attribute [Authorize(Roles = "Admin")]
+@inherits ServerPagedComponentBase<RoleListDto>
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
-<PageTitle>Roles</PageTitle>
+<PageTitle>Roles — BMS</PageTitle>
 
-<h1>Roles</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Roles</h1>
+        <p class="page-subtitle">Define and maintain access roles</p>
+    </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Role
+    </MudButton>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
-    <div class="alert alert-info">@Message</div>
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control" placeholder="Filter by name" @bind="Filter" @bind:event="oninput" />
-    </div>
-</div>
+<CreateEntityDialog TModel="RoleForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Role"
+                    SupportingText="Create an access role. The description is optional."
+                    DialogWidth="MaxWidth.Small"
+                    Submit="CreateRoleAsync"
+                    OnSuccess="OnRoleCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Counter="50"
+                      MaxLength="50"
+                      AutoFocus="true"
+                      Class="mb-3" />
+        <MudTextField @bind-Value="model.Description"
+                      For="@(() => model.Description)"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Counter="255"
+                      MaxLength="255"
+                      Lines="3" />
+    </FormFields>
+</CreateEntityDialog>
 
-<EditForm Model="Form" OnValidSubmit="SaveAsync" class="row g-2 mb-4">
-    <DataAnnotationsValidator />
-    <div class="col-md-3"><InputText class="form-control" placeholder="Name" @bind-Value="Form.Name" disabled="@EditingProtectedName" /></div>
-    <div class="col-md-5"><InputText class="form-control" placeholder="Description" @bind-Value="Form.Description" /></div>
-    <div class="col-md-4">
-        <button class="btn btn-primary" type="submit">Save</button>
-        <button class="btn btn-outline-secondary" type="button" @onclick="Clear">Clear</button>
-    </div>
-</EditForm>
+<EditEntityDialog TModel="RoleForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Role"
+                  SupportingText="@EditRoleSupportingText"
+                  DialogWidth="MaxWidth.Small"
+                  Submit="UpdateRoleAsync"
+                  OnSuccess="OnRoleUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Counter="50"
+                      MaxLength="50"
+                      Disabled="@model.IsProtected"
+                      AutoFocus="@(!model.IsProtected)"
+                      Class="mb-3" />
+        <MudTextField @bind-Value="model.Description"
+                      For="@(() => model.Description)"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Counter="255"
+                      MaxLength="255"
+                      AutoFocus="@model.IsProtected"
+                      Lines="3" />
+    </FormFields>
+</EditEntityDialog>
 
-<table class="table table-sm table-hover">
-    <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
-    <tbody>
-        @foreach (var role in FilteredRoles)
-        {
-            <tr>
-                <td>@role.Name</td>
-                <td>@role.Description</td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(role)">Edit</button>
-                    <button class="btn btn-sm btn-outline-danger" disabled="@role.IsProtected" @onclick="() => DeleteAsync(role.Id)">Delete</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <div class="d-flex align-center gap-2 flex-wrap">
+        <MudTextField T="string"
+                      @bind-Value="Filter"
+                      Label="Filter by name"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Margin="Margin.Dense"
+                      Style="max-width:320px;" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
+    </div>
+</MudPaper>
+
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable T="RoleListDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="RoleListDto" SortLabel="name">Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="RoleListDto" SortLabel="description">Description</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align:right">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Description">@context.Description</MudTd>
+            <MudTd DataLabel="Actions" Style="text-align:right">
+                <MudIconButton id="@EditTriggerId(context.Id)"
+                               Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="() => OpenEditDialog(context)"
+                               aria-label="@($"Edit {context.Name}")" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               Disabled="@context.IsProtected"
+                               OnClick="() => DeleteAsync(context.Id)"
+                               aria-label="@($"Delete {context.Name}")" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">No roles found.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
 
 @code {
-    private List<RoleListDto> Roles { get; set; } = [];
-    private RoleForm Form { get; set; } = new();
+    private const string AddTriggerId = "add-role-trigger";
+    private RoleForm _createForm = new();
+    private RoleForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private string? _editReturnFocusId;
     private string? Filter { get; set; }
+    private string? _appliedFilter;
     private string? Message { get; set; }
-    private bool EditingProtectedName => Form.Id is 1 or 2 or 3;
 
-    private IEnumerable<RoleListDto> FilteredRoles =>
-        Roles.Where(x => string.IsNullOrWhiteSpace(Filter) || x.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase));
+    private string EditRoleSupportingText => _editForm.IsProtected
+        ? "Built-in role names cannot be changed. The description is optional."
+        : "Update the role name or optional description.";
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    private async Task LoadAsync()
+    protected override Task<Result<OffsetPagedResult<RoleListDto>>> FetchPageAsync(
+        TableState state,
+        CancellationToken cancellationToken)
     {
-        var result = await Api.GetAsync<List<RoleListDto>>("api/Role");
-        Roles = result.Data ?? [];
-        Message = result.IsSuccess ? null : result.Message;
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+        if (!string.IsNullOrWhiteSpace(_appliedFilter))
+            queryParameters.Add($"search={Uri.EscapeDataString(_appliedFilter)}");
+        AddSortingParameters(queryParameters, state);
+
+        return Api.GetAsync<OffsetPagedResult<RoleListDto>>(
+            "api/Role/paged?" + string.Join("&", queryParameters),
+            cancellationToken);
     }
 
-    private void Edit(RoleListDto role)
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
+
+    private async Task SearchAsync()
     {
-        Form = new RoleForm { Id = role.Id, Name = role.Name, Description = role.Description };
+        _appliedFilter = string.IsNullOrWhiteSpace(Filter)
+            ? null
+            : Filter.Trim();
+        await ReloadFromFirstPageAsync();
     }
 
-    private void Clear() => Form = new RoleForm();
-
-    private async Task SaveAsync()
+    private async Task ClearFiltersAsync()
     {
-        var succeeded = false;
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>("api/Role", new CreateRoleRequest { Name = Form.Name, Description = Form.Description });
-            Message = result.Message;
-            succeeded = result.IsSuccess;
-        }
-        else
-        {
-            var result = await Api.PutAsync<RoleDetailDto>($"api/Role/{Form.Id}", new UpdateRoleRequest { Name = Form.Name, Description = Form.Description });
-            Message = result.Message;
-            succeeded = result.IsSuccess;
-        }
+        Filter = null;
+        _appliedFilter = null;
+        await ReloadFromFirstPageAsync();
+    }
 
-        if (succeeded)
+    private void OpenCreateDialog()
+    {
+        _createForm = new RoleForm();
+        Message = null;
+        _createDialogOpen = true;
+    }
+
+    private void OpenEditDialog(RoleListDto role)
+    {
+        _editForm = new RoleForm
         {
-            Clear();
-            await LoadAsync();
-        }
+            Id = role.Id,
+            Name = role.Name,
+            Description = role.Description,
+            IsProtected = role.IsProtected
+        };
+        _editReturnFocusId = EditTriggerId(role.Id);
+        Message = null;
+        _editDialogOpen = true;
+    }
+
+    private async Task<FormSubmitResult> CreateRoleAsync(RoleForm form)
+    {
+        var result = await Api.PostAsync<long>("api/Role", new CreateRoleRequest
+        {
+            Name = form.Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description.Trim()
+        });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
+
+    private async Task<FormSubmitResult> UpdateRoleAsync(RoleForm form)
+    {
+        var result = await Api.PutAsync<RoleDetailDto>($"api/Role/{form.Id}", new UpdateRoleRequest
+        {
+            Name = form.Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description.Trim()
+        });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
+
+    private async Task OnRoleCreatedAsync(FormSubmitResult result)
+    {
+        await ReloadFromFirstPageAsync();
+        Snackbar.Add(result.Message ?? "Role created successfully.", Severity.Success);
+    }
+
+    private async Task OnRoleUpdatedAsync(FormSubmitResult result)
+    {
+        await ReloadCurrentPageAsync();
+        Snackbar.Add(result.Message ?? "Role updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
         var result = await Api.DeleteAsync<bool>($"api/Role/{id}");
-        Message = result.Message;
-        await LoadAsync();
+        if (result.IsSuccess)
+        {
+            await ReloadAfterDeleteAsync();
+            Snackbar.Add(result.Message ?? "Role deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
+        }
     }
+
+    private static string EditTriggerId(long id) => $"edit-role-{id}";
 
     private sealed class RoleForm
     {
         public long Id { get; set; }
+
+        [Required(ErrorMessage = "Role name is required.")]
+        [MaxLength(50, ErrorMessage = "Name cannot exceed 50 characters.")]
         public string Name { get; set; } = "";
+
+        [MaxLength(255, ErrorMessage = "Description cannot exceed 255 characters.")]
         public string? Description { get; set; }
+        public bool IsProtected { get; set; }
     }
 }

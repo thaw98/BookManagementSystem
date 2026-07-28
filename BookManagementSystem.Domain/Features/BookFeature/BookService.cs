@@ -1,5 +1,5 @@
-﻿using Contracts;
-using Contracts.Book;
+﻿using Contracts.Book;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,31 +11,9 @@ public sealed class BookService(AppDbContext db) : IBookService
         BookFilterRequest filter,
         CancellationToken cancellationToken)
     {
-        var query = db.Books
-            .AsNoTracking()
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(filter.Title))
-        {
-            var title = filter.Title.Trim();
-
-            query = query.Where(x =>
-                x.Title.Contains(title));
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.Author))
-        {
-            var author = filter.Author.Trim();
-
-            query = query.Where(x =>
-                x.Author.Name.Contains(author));
-        }
-
-        if (filter.CategoryId.HasValue)
-        {
-            query = query.Where(x =>
-                x.CategoryId == filter.CategoryId.Value);
-        }
+        var query = ApplyFilters(
+            db.Books.AsNoTracking().AsQueryable(),
+            filter);
 
         var books = await query
             .OrderBy(x => x.Title)
@@ -54,6 +32,35 @@ public sealed class BookService(AppDbContext db) : IBookService
             .ToListAsync(cancellationToken);
 
         return Result<List<BookListDto>>.Success(books);
+    }
+
+    public async Task<Result<OffsetPagedResult<BookListDto>>> GetPagedAsync(
+        BookFilterRequest filter,
+        CancellationToken cancellationToken)
+    {
+        var query = ApplyFilters(
+            db.Books.AsNoTracking().AsQueryable(),
+            filter);
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            filter,
+            source => ApplyPagedOrdering(source, filter),
+            x => new BookListDto
+            {
+                Id = x.Id,
+                Title = x.Title,
+                AuthorId = x.AuthorId,
+                AuthorName = x.Author.Name,
+                CategoryId = x.CategoryId,
+                CategoryName = x.Category.Name,
+                TotalCopies = x.TotalCopies,
+                AvailableCopies = x.AvailableCopies,
+                CreatedAt = x.CreatedAt
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<BookListDto>>.Success(page);
     }
 
     public async Task<Result<BookDetailDto>> GetByIdAsync(
@@ -246,4 +253,52 @@ public sealed class BookService(AppDbContext db) : IBookService
 
     private static string NormalizeTitle(string title) =>
         title.Trim();
+
+    private static IQueryable<Book> ApplyFilters(
+        IQueryable<Book> query,
+        BookFilterRequest filter)
+    {
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim();
+            query = query.Where(x =>
+                x.Title.Contains(search) ||
+                x.Author.Name.Contains(search));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Title))
+        {
+            var title = filter.Title.Trim();
+            query = query.Where(x => x.Title.Contains(title));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Author))
+        {
+            var author = filter.Author.Trim();
+            query = query.Where(x => x.Author.Name.Contains(author));
+        }
+
+        if (filter.CategoryId.HasValue)
+            query = query.Where(x => x.CategoryId == filter.CategoryId.Value);
+
+        return query;
+    }
+
+    private static IOrderedQueryable<Book> ApplyPagedOrdering(
+        IQueryable<Book> query,
+        BookFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("title", true) => query.OrderByDescending(x => x.Title).ThenBy(x => x.Id),
+            ("title", false) => query.OrderBy(x => x.Title).ThenBy(x => x.Id),
+            ("author", true) => query.OrderByDescending(x => x.Author.Name).ThenBy(x => x.Id),
+            ("author", false) => query.OrderBy(x => x.Author.Name).ThenBy(x => x.Id),
+            ("category", true) => query.OrderByDescending(x => x.Category.Name).ThenBy(x => x.Id),
+            ("category", false) => query.OrderBy(x => x.Category.Name).ThenBy(x => x.Id),
+            ("totalCopies", true) => query.OrderByDescending(x => x.TotalCopies).ThenBy(x => x.Id),
+            ("totalCopies", false) => query.OrderBy(x => x.TotalCopies).ThenBy(x => x.Id),
+            ("availableCopies", true) => query.OrderByDescending(x => x.AvailableCopies).ThenBy(x => x.Id),
+            ("availableCopies", false) => query.OrderBy(x => x.AvailableCopies).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Title).ThenBy(x => x.Id)
+        };
 }

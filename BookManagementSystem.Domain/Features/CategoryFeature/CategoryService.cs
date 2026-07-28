@@ -1,5 +1,5 @@
-﻿using Contracts;
-using Contracts.Category;
+﻿using Contracts.Category;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +21,40 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
             .ToListAsync(cancellationToken);
 
         return Result<List<CategoryDto>>.Success(categories);
+    }
+
+    public async Task<Result<OffsetPagedResult<CategoryDto>>> GetPagedAsync(
+        CategoryFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Categories
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+            query = query.Where(x => x.Name.Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Name.Contains(search));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyPagedOrdering(source, request),
+            x => new CategoryDto
+            {
+                Id = x.Id,
+                Name = x.Name
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<CategoryDto>>.Success(page);
     }
 
     public async Task<Result<CategoryDto>> GetByIdAsync(
@@ -138,4 +172,14 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
 
     private static string NormalizeName(string name) =>
         name.Trim();
+
+    private static IOrderedQueryable<Category> ApplyPagedOrdering(
+        IQueryable<Category> query,
+        CategoryFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("name", true) => query.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("name", false) => query.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Name).ThenBy(x => x.Id)
+        };
 }

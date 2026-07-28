@@ -1,5 +1,5 @@
-using Contracts;
 using Contracts.User;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Auth;
@@ -26,6 +26,47 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             .ToListAsync(cancellationToken);
 
         return Result<List<UserListDto>>.Success(users);
+    }
+
+    public async Task<Result<OffsetPagedResult<UserListDto>>> GetPagedAsync(
+        UserFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Users
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim();
+            query = query.Where(x => x.Email.Contains(email));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Email.Contains(search));
+        }
+
+        if (request.RoleId.HasValue)
+            query = query.Where(x => x.RoleId == request.RoleId.Value);
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyPagedOrdering(source, request),
+            x => new UserListDto
+            {
+                Id = x.Id,
+                Email = x.Email,
+                RoleId = x.RoleId,
+                RoleName = x.Role.Name,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<UserListDto>>.Success(page);
     }
 
     public async Task<Result<UserDetailDto>> GetByIdAsync(long id, CancellationToken cancellationToken)
@@ -156,4 +197,18 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static IOrderedQueryable<User> ApplyPagedOrdering(
+        IQueryable<User> query,
+        UserFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("email", true) => query.OrderByDescending(x => x.Email).ThenBy(x => x.Id),
+            ("email", false) => query.OrderBy(x => x.Email).ThenBy(x => x.Id),
+            ("role", true) => query.OrderByDescending(x => x.Role.Name).ThenBy(x => x.Id),
+            ("role", false) => query.OrderBy(x => x.Role.Name).ThenBy(x => x.Id),
+            ("active", true) => query.OrderByDescending(x => x.IsActive).ThenBy(x => x.Id),
+            ("active", false) => query.OrderBy(x => x.IsActive).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Email).ThenBy(x => x.Id)
+        };
 }

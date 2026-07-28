@@ -1,57 +1,42 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Book Management</a>
+<div class="sidebar-brand">
+    <div class="brand-logo">
+        <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
+    </div>
+    <div>
+        <h2>BMS</h2>
+        <span>Library System</span>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<div class="sidebar-nav-label">Menu</div>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+<MudNavMenu Class="bms-nav">
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
 
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="users">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Users
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="roles">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Roles
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="Librarian">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="authors">
-                        <span class="bi bi-person-fill"
-                              aria-hidden="true"></span>
-                        Authors
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="categories">
-                        <span class="bi bi-tags-fill"
-                              aria-hidden="true"></span>
-                        Categories
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="books">
-                        <span class="bi bi-list-nested-nav-menu"
-                              aria-hidden="true"></span>
-                        Books
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-    </nav>
-</div>
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            <MudNavLink Href="users" Icon="@Icons.Material.Filled.Group">
+                Users
+            </MudNavLink>
+            <MudNavLink Href="roles" Icon="@Icons.Material.Filled.Security">
+                Roles
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Librarian">
+        <Authorized>
+            <MudNavLink Href="authors" Icon="@Icons.Material.Filled.Person">
+                Authors
+            </MudNavLink>
+            <MudNavLink Href="categories" Icon="@Icons.Material.Filled.Category">
+                Categories
+            </MudNavLink>
+            <MudNavLink Href="books" Icon="@Icons.Material.Filled.AutoStories">
+                Books
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+</MudNavMenu>

@@ -1,157 +1,435 @@
 @page "/users"
 @attribute [Authorize(Roles = "Admin")]
+@inherits ServerPagedComponentBase<UserListDto>
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
-<PageTitle>Users</PageTitle>
+<PageTitle>Users — BMS</PageTitle>
 
-<h1>Users</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">User Management</h1>
+        <p class="page-subtitle">Invite librarians and members to the library</p>
+    </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add User
+    </MudButton>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
-    <div class="alert alert-info">@Message</div>
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<div class="row g-2 mb-3">
-    <div class="col-md-4"><input class="form-control" placeholder="Filter by email" @bind="EmailFilter" @bind:event="oninput" /></div>
-    <div class="col-md-3">
-        <select class="form-select" @bind="RoleFilter">
-            <option value="">All roles</option>
-            @foreach (var role in Roles)
-            {
-                <option value="@role.Name">@role.Name</option>
-            }
-        </select>
-    </div>
-</div>
+<CreateEntityDialog TModel="UserCreateForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="User"
+                    SupportingText="Create a user account and assign its initial access role."
+                    DialogWidth="MaxWidth.Medium"
+                    Submit="CreateUserAsync"
+                    OnSuccess="OnUserCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudGrid Spacing="2" Class="bms-dialog-grid">
+            <MudItem xs="12" sm="7">
+                <MudTextField @bind-Value="model.Email"
+                              For="@(() => model.Email)"
+                              Label="Email"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              Counter="150"
+                              MaxLength="150"
+                              AutoFocus="true" />
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudSelect T="long"
+                           @bind-Value="model.RoleId"
+                           For="@(() => model.RoleId)"
+                           Label="Role"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="long" Value="0">Select role</MudSelectItem>
+                    @foreach (var role in Roles)
+                    {
+                        <MudSelectItem T="long" Value="@role.Id">@role.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="7">
+                <MudTextField @bind-Value="model.Password"
+                              For="@(() => model.Password)"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="5" Class="bms-dialog-checkbox">
+                <MudCheckBox @bind-Value="model.IsActive"
+                             Label="Active"
+                             Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+    </FormFields>
+</CreateEntityDialog>
 
-<EditForm Model="Form" OnValidSubmit="SaveAsync" class="row g-2 mb-4">
-    <DataAnnotationsValidator />
-    <div class="col-md-3"><InputText class="form-control" placeholder="Email" @bind-Value="Form.Email" /></div>
-    <div class="col-md-2">
-        <InputSelect class="form-select" @bind-Value="Form.RoleId">
-            @foreach (var role in Roles)
-            {
-                <option value="@role.Id">@role.Name</option>
-            }
-        </InputSelect>
-    </div>
-    <div class="col-md-2"><InputText class="form-control" placeholder="Password" @bind-Value="Form.Password" type="password" /></div>
-    <div class="col-md-2 form-check pt-2">
-        <InputCheckbox class="form-check-input" @bind-Value="Form.IsActive" />
-        <label class="form-check-label">Active</label>
-    </div>
-    <div class="col-md-3">
-        <button class="btn btn-primary" type="submit">Save</button>
-        <button class="btn btn-outline-secondary" type="button" @onclick="Clear">Clear</button>
-    </div>
-</EditForm>
+<EditEntityDialog TModel="UserEditForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="User"
+                  SupportingText="Update the account email, role, or active state."
+                  DialogWidth="MaxWidth.Medium"
+                  Submit="UpdateUserAsync"
+                  OnSuccess="OnUserUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudGrid Spacing="2" Class="bms-dialog-grid">
+            <MudItem xs="12" sm="7">
+                <MudTextField @bind-Value="model.Email"
+                              For="@(() => model.Email)"
+                              Label="Email"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              Counter="150"
+                              MaxLength="150"
+                              AutoFocus="true" />
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudSelect T="long"
+                           @bind-Value="model.RoleId"
+                           For="@(() => model.RoleId)"
+                           Label="Role"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="long" Value="0">Select role</MudSelectItem>
+                    @foreach (var role in Roles)
+                    {
+                        <MudSelectItem T="long" Value="@role.Id">@role.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" Class="bms-dialog-checkbox">
+                <MudCheckBox @bind-Value="model.IsActive"
+                             Label="Active"
+                             Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+    </FormFields>
+</EditEntityDialog>
 
-<table class="table table-sm table-hover">
-    <thead><tr><th>Email</th><th>Role</th><th>Active</th><th></th></tr></thead>
-    <tbody>
-        @foreach (var user in FilteredUsers)
-        {
-            <tr>
-                <td>@user.Email</td>
-                <td>@user.RoleName</td>
-                <td>@(user.IsActive ? "Yes" : "No")</td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(user)">Edit</button>
-                    <button class="btn btn-sm btn-outline-warning" @onclick="() => ResetPasswordAsync(user.Id)">Reset Password</button>
-                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(user.Id)">Delete</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<ResetPasswordDialog @bind-IsOpen="_resetDialogOpen"
+                     UserEmail="@_resetUserEmail"
+                     Submit="ResetPasswordAsync"
+                     OnSuccess="OnPasswordResetAsync"
+                     ReturnFocusElementId="@_resetReturnFocusId" />
+
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudTextField T="string"
+                          @bind-Value="EmailFilter"
+                          Label="Filter by email"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="long"
+                       @bind-Value="RoleFilterId"
+                       Label="Role"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+                <MudSelectItem T="long" Value="0">All roles</MudSelectItem>
+                @foreach (var role in Roles)
+                {
+                    <MudSelectItem T="long" Value="@role.Id">@role.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="5" Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable T="UserListDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="UserListDto" SortLabel="email">Email</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="UserListDto" SortLabel="role">Role</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="UserListDto" SortLabel="active">Active</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align:right">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Role">
+                <span class="role-badge @context.RoleName.ToLowerInvariant()">@context.RoleName</span>
+            </MudTd>
+            <MudTd DataLabel="Active">
+                <span class="status-pill @(context.IsActive ? "active" : "inactive")">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </span>
+            </MudTd>
+            <MudTd DataLabel="Actions" Style="text-align:right">
+                <MudIconButton id="@EditTriggerId(context.Id)"
+                               Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="() => OpenEditDialog(context)"
+                               aria-label="@($"Edit {context.Email}")" />
+                <MudIconButton id="@ResetTriggerId(context.Id)"
+                               Icon="@Icons.Material.Filled.LockReset"
+                               Size="Size.Small"
+                               Color="Color.Warning"
+                               OnClick="() => OpenResetDialog(context)"
+                               aria-label="@($"Reset password for {context.Email}")" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="() => DeleteAsync(context.Id)"
+                               aria-label="@($"Delete {context.Email}")" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">No users found.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
 
 @code {
-    private List<UserListDto> Users { get; set; } = [];
+    private const string AddTriggerId = "add-user-trigger";
     private List<RoleListDto> Roles { get; set; } = [];
-    private UserForm Form { get; set; } = new();
+    private UserCreateForm _createForm = new();
+    private UserEditForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private bool _resetDialogOpen;
+    private long _resetUserId;
+    private string? _resetUserEmail;
+    private string? _editReturnFocusId;
+    private string? _resetReturnFocusId;
     private string? EmailFilter { get; set; }
-    private string? RoleFilter { get; set; }
+    private long RoleFilterId { get; set; }
+    private string? _appliedEmailFilter;
+    private long _appliedRoleFilterId;
     private string? Message { get; set; }
-
-    private IEnumerable<UserListDto> FilteredUsers => Users.Where(x =>
-        (string.IsNullOrWhiteSpace(EmailFilter) || x.Email.Contains(EmailFilter, StringComparison.OrdinalIgnoreCase)) &&
-        (string.IsNullOrWhiteSpace(RoleFilter) || x.RoleName == RoleFilter));
 
     protected override async Task OnInitializedAsync()
     {
         await LoadRolesAsync();
-        await LoadUsersAsync();
-        Form.RoleId = Roles.FirstOrDefault()?.Id ?? 0;
+        _createForm = NewCreateForm();
     }
 
-    private async Task LoadUsersAsync()
+    protected override Task<Result<OffsetPagedResult<UserListDto>>> FetchPageAsync(
+        TableState state,
+        CancellationToken cancellationToken)
     {
-        var result = await Api.GetAsync<List<UserListDto>>("api/User");
-        Users = result.Data ?? [];
-        Message = result.IsSuccess ? Message : result.Message;
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(_appliedEmailFilter))
+            queryParameters.Add($"email={Uri.EscapeDataString(_appliedEmailFilter)}");
+
+        if (_appliedRoleFilterId > 0)
+            queryParameters.Add($"roleId={_appliedRoleFilterId}");
+
+        AddSortingParameters(queryParameters, state);
+        return Api.GetAsync<OffsetPagedResult<UserListDto>>(
+            "api/User/paged?" + string.Join("&", queryParameters),
+            cancellationToken);
     }
+
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
 
     private async Task LoadRolesAsync()
     {
         var result = await Api.GetAsync<List<RoleListDto>>("api/Role");
         Roles = result.Data ?? [];
+        if (!result.IsSuccess) Message = result.Message;
     }
 
-    private void Edit(UserListDto user)
+    private async Task SearchAsync()
     {
-        Form = new UserForm { Id = user.Id, Email = user.Email, RoleId = user.RoleId, IsActive = user.IsActive };
+        _appliedEmailFilter = string.IsNullOrWhiteSpace(EmailFilter)
+            ? null
+            : EmailFilter.Trim();
+        _appliedRoleFilterId = RoleFilterId;
+        await ReloadFromFirstPageAsync();
     }
 
-    private void Clear() => Form = new UserForm { RoleId = Roles.FirstOrDefault()?.Id ?? 0, IsActive = true };
-
-    private async Task SaveAsync()
+    private async Task ClearFiltersAsync()
     {
-        if (Form.Id == 0)
+        EmailFilter = null;
+        RoleFilterId = 0;
+        _appliedEmailFilter = null;
+        _appliedRoleFilterId = 0;
+        await ReloadFromFirstPageAsync();
+    }
+
+    private void OpenCreateDialog()
+    {
+        _createForm = NewCreateForm();
+        Message = null;
+        _createDialogOpen = true;
+    }
+
+    private void OpenEditDialog(UserListDto user)
+    {
+        _editForm = new UserEditForm
         {
-            var result = await Api.PostAsync<long>("api/User", new CreateUserRequest
-            {
-                Email = Form.Email,
-                Password = Form.Password,
-                RoleId = Form.RoleId,
-                IsActive = Form.IsActive
-            });
-            Message = result.Message;
-        }
-        else
-        {
-            var result = await Api.PutAsync<UserDetailDto>($"api/User/{Form.Id}", new UpdateUserRequest
-            {
-                Email = Form.Email,
-                RoleId = Form.RoleId,
-                IsActive = Form.IsActive
-            });
-            Message = result.Message;
-        }
-
-        Clear();
-        await LoadUsersAsync();
+            Id = user.Id,
+            Email = user.Email,
+            RoleId = user.RoleId,
+            IsActive = user.IsActive
+        };
+        _editReturnFocusId = EditTriggerId(user.Id);
+        Message = null;
+        _editDialogOpen = true;
     }
 
-    private async Task ResetPasswordAsync(long id)
+    private void OpenResetDialog(UserListDto user)
     {
-        var password = string.IsNullOrWhiteSpace(Form.Password) ? "password123" : Form.Password;
-        var result = await Api.PostAsync<bool>($"api/User/{id}/ResetPassword", new ResetPasswordRequest { Password = password });
-        Message = result.Message;
+        _resetUserId = user.Id;
+        _resetUserEmail = user.Email;
+        _resetReturnFocusId = ResetTriggerId(user.Id);
+        Message = null;
+        _resetDialogOpen = true;
+    }
+
+    private async Task<FormSubmitResult> CreateUserAsync(UserCreateForm form)
+    {
+        var result = await Api.PostAsync<long>("api/User", new CreateUserRequest
+        {
+            Email = form.Email.Trim(),
+            Password = form.Password,
+            RoleId = form.RoleId,
+            IsActive = form.IsActive
+        });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
+
+    private async Task<FormSubmitResult> UpdateUserAsync(UserEditForm form)
+    {
+        var result = await Api.PutAsync<UserDetailDto>($"api/User/{form.Id}", new UpdateUserRequest
+        {
+            Email = form.Email.Trim(),
+            RoleId = form.RoleId,
+            IsActive = form.IsActive
+        });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
+
+    private async Task<FormSubmitResult> ResetPasswordAsync(string password)
+    {
+        var result = await Api.PostAsync<bool>(
+            $"api/User/{_resetUserId}/ResetPassword",
+            new ResetPasswordRequest { Password = password });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
+
+    private async Task OnUserCreatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadFromFirstPageAsync();
+        Snackbar.Add(result.Message ?? "User created successfully.", Severity.Success);
+    }
+
+    private async Task OnUserUpdatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadCurrentPageAsync();
+        Snackbar.Add(result.Message ?? "User updated successfully.", Severity.Success);
+    }
+
+    private async Task OnPasswordResetAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadCurrentPageAsync();
+        Snackbar.Add(result.Message ?? "Password reset successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
         var result = await Api.DeleteAsync<bool>($"api/User/{id}");
-        Message = result.Message;
-        await LoadUsersAsync();
+        if (result.IsSuccess)
+        {
+            await ReloadAfterDeleteAsync();
+            Snackbar.Add(result.Message ?? "User deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
+        }
     }
 
-    private sealed class UserForm
+    private UserCreateForm NewCreateForm() => new()
+    {
+        RoleId = Roles.FirstOrDefault()?.Id ?? 0,
+        IsActive = true
+    };
+
+    private static string EditTriggerId(long id) => $"edit-user-{id}";
+    private static string ResetTriggerId(long id) => $"reset-password-user-{id}";
+
+    private sealed class UserCreateForm
+    {
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Password is required.")]
+        public string Password { get; set; } = "";
+
+        [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Please select a role.")]
+        public long RoleId { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    private sealed class UserEditForm
     {
         public long Id { get; set; }
+
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
         public string Email { get; set; } = "";
-        public string Password { get; set; } = "";
+
+        [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Please select a role.")]
         public long RoleId { get; set; }
+
         public bool IsActive { get; set; } = true;
     }
 }
