@@ -291,6 +291,32 @@ button, input, select, textarea {
     line-height: 1.2;
 }
 
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar-logout-form {
+    margin: 0;
+}
+
+.topbar-logout-button.mud-button-root {
+    text-transform: none !important;
+    border-radius: 999px !important;
+    min-width: 0;
+    padding: 8px 14px !important;
+    color: var(--danger) !important;
+    border: 1px solid rgba(239, 68, 68, 0.18) !important;
+    background: #fff5f5 !important;
+    box-shadow: var(--shadow);
+}
+
+.topbar-logout-button.mud-button-root:hover {
+    background: #fef2f2 !important;
+    border-color: rgba(239, 68, 68, 0.32) !important;
+}
+
 /* ===== Profile trigger ===== */
 .profile-trigger.mud-button-root {
     text-transform: none !important;
@@ -917,6 +943,14 @@ button, input, select, textarea {
 
     .profile-meta {
         display: none;
+    }
+
+    .topbar-actions {
+        gap: 8px;
+    }
+
+    .topbar-logout-button.mud-button-root {
+        padding: 8px 12px !important;
     }
 }
 
