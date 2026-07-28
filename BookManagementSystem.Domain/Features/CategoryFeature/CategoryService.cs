@@ -164,10 +164,14 @@ public sealed class CategoryService(AppDbContext db) : ICategoryService
                 "This category cannot be deleted because books are using this category.");
         }
 
+        var name = category.Name;
+
         db.Categories.Remove(category);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.Success(true);
+        return Result<bool>.Success(
+            true,
+            $"Category “{name}” deleted.");
     }
 
     private static string NormalizeName(string name) =>

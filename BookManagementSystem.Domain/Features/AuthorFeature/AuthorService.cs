@@ -154,10 +154,14 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
                 "This author cannot be deleted because books are using this author.");
         }
 
+        var name = author.Name;
+
         db.Authors.Remove(author);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.Success(true);
+        return Result<bool>.Success(
+            true,
+            $"Author “{name}” deleted.");
     }
 
     private static string NormalizeName(string name) =>

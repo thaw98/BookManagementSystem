@@ -222,7 +222,7 @@
                                    OnClick="() => OpenResetDialog(context)"
                                    aria-label="@($"Reset password for {context.Email}")" />
                     <DeleteIconButton DisplayName="@context.Email"
-                                      OnDelete="() => DeleteAsync(context.Id)" />
+                                      OnDelete="() => DeleteAsync(context.Id, context.Email)" />
                 }
             </MudTd>
         </RowTemplate>
@@ -400,18 +400,24 @@
         Snackbar.Add(result.Message ?? "Password reset successfully.", Severity.Success);
     }
 
-    private async Task DeleteAsync(long id)
+    private async Task DeleteAsync(long id, string email)
     {
         var result = await Api.DeleteAsync<bool>($"api/User/{id}");
         if (result.IsSuccess)
         {
             await ReloadAfterDeleteAsync();
-            Snackbar.Add(result.Message ?? "User deleted successfully.", Severity.Success);
+
+            var message =
+                string.IsNullOrWhiteSpace(result.Message) ||
+                string.Equals(result.Message, "Success", StringComparison.OrdinalIgnoreCase)
+                    ? $"User “{email}” deleted."
+                    : result.Message;
+
+            Snackbar.Add(message, Severity.Success);
+            return;
         }
-        else
-        {
-            Message = result.Message;
-        }
+
+        Message = result.Message;
     }
 
     private UserCreateForm NewCreateForm() => new()

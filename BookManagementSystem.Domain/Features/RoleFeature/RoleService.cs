@@ -132,9 +132,13 @@ public sealed class RoleService(AppDbContext db) : IRoleService
         if (hasUsers)
             return Result<bool>.Validation("This role is assigned to one or more users and cannot be deleted.");
 
+        var name = role.Name;
+
         db.Roles.Remove(role);
         await db.SaveChangesAsync(cancellationToken);
-        return Result<bool>.Success(true);
+        return Result<bool>.Success(
+            true,
+            $"Role “{name}” deleted.");
     }
 
     private static string NormalizeName(string name) => name.Trim();
