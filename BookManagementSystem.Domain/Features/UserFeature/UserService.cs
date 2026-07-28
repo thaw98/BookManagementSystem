@@ -17,6 +17,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             .Select(x => new UserListDto
             {
                 Id = x.Id,
+                FullName = x.FullName,
                 Email = x.Email,
                 RoleId = x.RoleId,
                 RoleName = x.Role.Name,
@@ -36,6 +37,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             .Select(u => new UserDetailDto
             {
                 Id = u.Id,
+                FullName = u.FullName,
                 Email = u.Email,
                 RoleId = u.RoleId,
                 RoleName = u.Role.Name,
@@ -52,6 +54,9 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<long>> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken)
     {
+        var fullName = request.FullName.Trim();
+        if (string.IsNullOrWhiteSpace(fullName))
+            return Result<long>.Validation("Full name is required.");
         var email = NormalizeEmail(request.Email);
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.Password))
             return Result<long>.Validation("Email and password are required.");
@@ -64,6 +69,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
         var user = new User
         {
+            FullName = fullName,
             Email = email,
             PasswordHash = passwordHasher.HashPassword(request.Password),
             RoleId = request.RoleId,
@@ -80,6 +86,14 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null)
             return Result<UserDetailDto>.NotFound();
+
+        var fullName = request.FullName.Trim();
+
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return Result<UserDetailDto>.Validation(
+                "Full name is required.");
+        }
 
         var email = NormalizeEmail(request.Email);
         if (string.IsNullOrWhiteSpace(email))
@@ -100,6 +114,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             return Result<UserDetailDto>.Validation("The system must keep at least one active Admin.");
 
         var securityChanged = user.Email != email || user.RoleId != request.RoleId || user.IsActive != request.IsActive;
+        user.FullName = fullName;
         user.Email = email;
         user.RoleId = request.RoleId;
         user.IsActive = request.IsActive;

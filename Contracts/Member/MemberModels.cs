@@ -1,41 +1,45 @@
-namespace Contracts.User;
+﻿namespace Contracts.Member;
 
-public class UserListDto
+public class MemberListDto
 {
     public long Id { get; set; }
+
     public string FullName { get; set; } = "";
+
     public string Email { get; set; } = "";
-    public long RoleId { get; set; }
-    public string RoleName { get; set; } = "";
+
     public bool IsActive { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }
 
-public sealed class UserDetailDto : UserListDto
+public sealed class MemberDetailDto : MemberListDto
 {
     public DateTime UpdatedAt { get; set; }
+
     public long? CreatedBy { get; set; }
+
     public long? UpdatedBy { get; set; }
 }
 
-public sealed class CreateUserRequest
+public sealed class CreateMemberRequest
 {
     public string FullName { get; set; } = "";
+
     public string Email { get; set; } = "";
+
     public string Password { get; set; } = "";
-    public long RoleId { get; set; }
+
+    public string ConfirmPassword { get; set; } = "";
+
     public bool IsActive { get; set; } = true;
 }
 
-public sealed class UpdateUserRequest
+public sealed class UpdateMemberRequest
 {
     public string FullName { get; set; } = "";
-    public string Email { get; set; } = "";
-    public long RoleId { get; set; }
-    public bool IsActive { get; set; } = true;
-}
 
-public sealed class ResetPasswordRequest
-{
-    public string Password { get; set; } = "";
+    public string Email { get; set; } = "";
+
+    public bool IsActive { get; set; }
 }

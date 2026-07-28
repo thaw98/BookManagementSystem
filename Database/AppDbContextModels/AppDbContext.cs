@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<Book> Books => Set<Book>();
+    public DbSet<BookBorrowRecord> BookBorrowRecords
+    => Set<BookBorrowRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

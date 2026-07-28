@@ -4,6 +4,7 @@ using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260728031255_AddUserFullName")]
+    partial class AddUserFullName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,57 +109,6 @@ namespace Database.Migrations
                     b.HasIndex("Title");
 
                     b.ToTable("Books", (string)null);
-                });
-
-            modelBuilder.Entity("Database.AppDbContextModels.BookBorrowRecord", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("BookId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("BorrowedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<long?>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("DueAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("ReturnedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<long?>("UpdatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BookId");
-
-                    b.HasIndex("BorrowedAt");
-
-                    b.HasIndex("ReturnedAt");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("BookBorrowRecords", (string)null);
                 });
 
             modelBuilder.Entity("Database.AppDbContextModels.Category", b =>
@@ -376,25 +328,6 @@ namespace Database.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("Database.AppDbContextModels.BookBorrowRecord", b =>
-                {
-                    b.HasOne("Database.AppDbContextModels.Book", "Book")
-                        .WithMany("BorrowRecords")
-                        .HasForeignKey("BookId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Database.AppDbContextModels.User", "User")
-                        .WithMany("BookBorrowRecords")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Book");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Database.AppDbContextModels.RefreshToken", b =>
                 {
                     b.HasOne("Database.AppDbContextModels.User", "User")
@@ -422,11 +355,6 @@ namespace Database.Migrations
                     b.Navigation("Books");
                 });
 
-            modelBuilder.Entity("Database.AppDbContextModels.Book", b =>
-                {
-                    b.Navigation("BorrowRecords");
-                });
-
             modelBuilder.Entity("Database.AppDbContextModels.Category", b =>
                 {
                     b.Navigation("Books");
@@ -439,8 +367,6 @@ namespace Database.Migrations
 
             modelBuilder.Entity("Database.AppDbContextModels.User", b =>
                 {
-                    b.Navigation("BookBorrowRecords");
-
                     b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618

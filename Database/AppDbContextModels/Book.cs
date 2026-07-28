@@ -15,4 +15,6 @@ public class Book : AuditableEntity
     public int TotalCopies { get; set; }
 
     public int AvailableCopies { get; set; }
+    public ICollection<BookBorrowRecord> BorrowRecords { get; set; }
+    = new List<BookBorrowRecord>();
 }
