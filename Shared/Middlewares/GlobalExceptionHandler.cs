@@ -1,7 +1,7 @@
-using Contracts;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Shared.Models;
 
 namespace Shared.Middlewares;
 

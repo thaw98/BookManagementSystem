@@ -1,4 +1,4 @@
-namespace Contracts;
+namespace Shared.Models;
 
 public enum ResultStatus
 {

@@ -18,6 +18,14 @@ public sealed class BookController(
             filter,
             cancellationToken));
 
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] BookFilterRequest filter,
+        CancellationToken cancellationToken) =>
+        Execute(await bookService.GetPagedAsync(
+            filter,
+            cancellationToken));
+
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById(
         long id,

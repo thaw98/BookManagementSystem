@@ -16,6 +16,14 @@ public sealed class CategoryController(
         Execute(await categoryService.GetAllAsync(
             cancellationToken));
 
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] CategoryFilterRequest request,
+        CancellationToken cancellationToken) =>
+        Execute(await categoryService.GetPagedAsync(
+            request,
+            cancellationToken));
+
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById(
         long id,

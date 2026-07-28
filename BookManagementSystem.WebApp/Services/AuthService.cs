@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using Contracts;
 using Contracts.Auth;
+using Shared.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 

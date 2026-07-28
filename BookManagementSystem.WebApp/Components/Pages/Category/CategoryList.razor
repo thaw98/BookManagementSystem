@@ -1,219 +1,246 @@
-﻿@page "/categories"
+@page "/categories"
 @attribute [Authorize(Roles = "Librarian")]
+@inherits ServerPagedComponentBase<CategoryDto>
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
-<PageTitle>Categories</PageTitle>
+<PageTitle>Categories — BMS</PageTitle>
 
-<h1>Categories</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Categories</h1>
+        <p class="page-subtitle">Organize books by category</p>
+    </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Category
+    </MudButton>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
-    <div class="alert alert-info">
-        @Message
-    </div>
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<EditForm Model="Form"
-          OnValidSubmit="SaveAsync"
-          class="row g-2 mb-4">
+<CreateEntityDialog TModel="CategoryForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Category"
+                    SupportingText="Create a category for organizing the catalog."
+                    DialogWidth="MaxWidth.Small"
+                    Submit="CreateCategoryAsync"
+                    OnSuccess="OnCategoryCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Category name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Counter="100"
+                      MaxLength="100"
+                      AutoFocus="true" />
+    </FormFields>
+</CreateEntityDialog>
 
-    <DataAnnotationsValidator />
+<EditEntityDialog TModel="CategoryForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Category"
+                  SupportingText="Update the category name used in the catalog."
+                  DialogWidth="MaxWidth.Small"
+                  Submit="UpdateCategoryAsync"
+                  OnSuccess="OnCategoryUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Category name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Counter="100"
+                      MaxLength="100"
+                      AutoFocus="true" />
+    </FormFields>
+</EditEntityDialog>
 
-    <div class="col-md-6">
-        <InputText class="form-control"
-                   placeholder="Category name"
-                   @bind-Value="Form.Name" />
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <div class="d-flex align-center gap-2 flex-wrap">
+        <MudTextField T="string"
+                      @bind-Value="SearchText"
+                      Label="Search category"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Margin="Margin.Dense"
+                      Style="max-width:320px;" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
     </div>
-
-    <div class="col-md-6">
-        <button class="btn btn-primary"
-                type="submit">
-            @(Form.Id == 0 ? "Create" : "Update")
-        </button>
-
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="Clear">
-            Clear
-        </button>
-    </div>
-
-</EditForm>
-
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control"
-               placeholder="Search category"
-               @bind="SearchText"
-               @bind:event="oninput" />
-    </div>
-</div>
+</MudPaper>
 
 @if (IsLoading)
 {
-    <p>Loading categories...</p>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
-else if (!FilteredCategories.Any())
-{
-    <div class="alert alert-secondary">
-        No categories found.
-    </div>
-}
-else
-{
-    <table class="table table-sm table-hover">
 
-        <thead>
-            <tr>
-                <th>Category Name</th>
-                <th></th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var category in FilteredCategories)
-            {
-                <tr>
-                    <td>@category.Name</td>
-
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => Edit(category)">
-                            Edit
-                        </button>
-
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(category.Id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-    </table>
-}
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable T="CategoryDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+            <HeaderContent>
+                <MudTh><MudTableSortLabel T="CategoryDto" SortLabel="name">Category Name</MudTableSortLabel></MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Category Name">@context.Name</MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton id="@EditTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="() => OpenEditDialog(context)"
+                                   aria-label="@($"Edit {context.Name}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteAsync(context.Id)"
+                                   aria-label="@($"Delete {context.Name}")" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4 mud-text-secondary">No categories found.</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+            </PagerContent>
+    </MudTable>
+</MudPaper>
 
 @code {
-    private List<CategoryDto> Categories { get; set; } = [];
-
-    private CategoryForm Form { get; set; } = new();
-
+    private const string AddTriggerId = "add-category-trigger";
+    private CategoryForm _createForm = new();
+    private CategoryForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private string? _editReturnFocusId;
     private string? SearchText { get; set; }
-
+    private string? _appliedSearchText;
     private string? Message { get; set; }
 
-    private bool IsLoading { get; set; }
-
-    private IEnumerable<CategoryDto> FilteredCategories =>
-        Categories.Where(x =>
-            string.IsNullOrWhiteSpace(SearchText) ||
-            x.Name.Contains(
-                SearchText,
-                StringComparison.OrdinalIgnoreCase));
-
-    protected override async Task OnInitializedAsync()
+    protected override Task<Result<OffsetPagedResult<CategoryDto>>> FetchPageAsync(
+        TableState state,
+        CancellationToken cancellationToken)
     {
-        await LoadCategoriesAsync();
-    }
-
-    private async Task LoadCategoriesAsync()
-    {
-        IsLoading = true;
-
-        var result =
-            await Api.GetAsync<List<CategoryDto>>("api/Category");
-
-        Categories = result.Data ?? [];
-
-        if (!result.IsSuccess)
+        var queryParameters = new List<string>
         {
-            Message = result.Message;
-        }
-
-        IsLoading = false;
-    }
-
-    private void Edit(CategoryDto category)
-    {
-        Form = new CategoryForm
-        {
-            Id = category.Id,
-            Name = category.Name
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
         };
+        if (!string.IsNullOrWhiteSpace(_appliedSearchText))
+            queryParameters.Add($"search={Uri.EscapeDataString(_appliedSearchText)}");
+        AddSortingParameters(queryParameters, state);
 
-        Message = null;
+        return Api.GetAsync<OffsetPagedResult<CategoryDto>>(
+            "api/Category/paged?" + string.Join("&", queryParameters),
+            cancellationToken);
     }
 
-    private void Clear()
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
+
+    private async Task SearchAsync()
     {
-        Form = new CategoryForm();
-        Message = null;
+        _appliedSearchText = string.IsNullOrWhiteSpace(SearchText)
+            ? null
+            : SearchText.Trim();
+        await ReloadFromFirstPageAsync();
     }
 
-    private async Task SaveAsync()
+    private async Task ClearFiltersAsync()
     {
-        if (string.IsNullOrWhiteSpace(Form.Name))
-        {
-            Message = "Category name is required.";
-            return;
-        }
+        SearchText = null;
+        _appliedSearchText = null;
+        await ReloadFromFirstPageAsync();
+    }
 
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>(
-                "api/Category",
-                new CreateCategoryRequest
-                {
-                    Name = Form.Name
-                });
+    private void OpenCreateDialog()
+    {
+        _createForm = new CategoryForm();
+        Message = null;
+        _createDialogOpen = true;
+    }
 
-            Message = result.Message;
+    private void OpenEditDialog(CategoryDto category)
+    {
+        _editForm = new CategoryForm { Id = category.Id, Name = category.Name };
+        _editReturnFocusId = EditTriggerId(category.Id);
+        Message = null;
+        _editDialogOpen = true;
+    }
 
-            if (!result.IsSuccess)
-            {
-                return;
-            }
-        }
-        else
-        {
-            var result = await Api.PutAsync<CategoryDto>(
-                $"api/Category/{Form.Id}",
-                new UpdateCategoryRequest
-                {
-                    Name = Form.Name
-                });
+    private async Task<FormSubmitResult> CreateCategoryAsync(CategoryForm form)
+    {
+        var result = await Api.PostAsync<long>("api/Category", new CreateCategoryRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-            Message = result.Message;
+    private async Task<FormSubmitResult> UpdateCategoryAsync(CategoryForm form)
+    {
+        var result = await Api.PutAsync<CategoryDto>(
+            $"api/Category/{form.Id}",
+            new UpdateCategoryRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-            if (!result.IsSuccess)
-            {
-                return;
-            }
-        }
+    private async Task OnCategoryCreatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadFromFirstPageAsync();
+        Snackbar.Add(result.Message ?? "Category created successfully.", Severity.Success);
+    }
 
-        Form = new CategoryForm();
-
-        await LoadCategoriesAsync();
+    private async Task OnCategoryUpdatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadCurrentPageAsync();
+        Snackbar.Add(result.Message ?? "Category updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
-        var result =
-            await Api.DeleteAsync<bool>($"api/Category/{id}");
-
-        Message = result.Message;
-
+        var result = await Api.DeleteAsync<bool>($"api/Category/{id}");
         if (result.IsSuccess)
         {
-            await LoadCategoriesAsync();
+            await ReloadAfterDeleteAsync();
+            Snackbar.Add(result.Message ?? "Category deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
         }
     }
+
+    private static string EditTriggerId(long id) => $"edit-category-{id}";
 
     private sealed class CategoryForm
     {
         public long Id { get; set; }
 
+        [Required(ErrorMessage = "Category name is required.")]
+        [MaxLength(100, ErrorMessage = "Name cannot exceed 100 characters.")]
         public string Name { get; set; } = "";
     }
 }

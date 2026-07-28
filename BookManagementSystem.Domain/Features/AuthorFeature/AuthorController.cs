@@ -15,6 +15,14 @@ public sealed class AuthorController(
         CancellationToken cancellationToken) =>
         Execute(await authorService.GetAllAsync(cancellationToken));
 
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] AuthorFilterRequest request,
+        CancellationToken cancellationToken) =>
+        Execute(await authorService.GetPagedAsync(
+            request,
+            cancellationToken));
+
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById(
         long id,

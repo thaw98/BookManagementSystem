@@ -1,5 +1,5 @@
-using Contracts;
 using Contracts.Role;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -22,6 +22,44 @@ public sealed class RoleService(AppDbContext db) : IRoleService
             .ToListAsync(cancellationToken);
 
         return Result<List<RoleListDto>>.Success(roles);
+    }
+
+    public async Task<Result<OffsetPagedResult<RoleListDto>>> GetPagedAsync(
+        RoleFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Roles
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+            query = query.Where(x => x.Name.Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Name.Contains(search));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyPagedOrdering(source, request),
+            x => new RoleListDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description,
+                IsProtected = x.Id == RoleNames.AdminId ||
+                    x.Id == RoleNames.LibrarianId ||
+                    x.Id == RoleNames.LibraryMemberId
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<RoleListDto>>.Success(page);
     }
 
     public async Task<Result<RoleDetailDto>> GetByIdAsync(long id, CancellationToken cancellationToken)
@@ -101,4 +139,16 @@ public sealed class RoleService(AppDbContext db) : IRoleService
 
     private static string NormalizeName(string name) => name.Trim();
     private static string? CleanDescription(string? description) => string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+    private static IOrderedQueryable<Role> ApplyPagedOrdering(
+        IQueryable<Role> query,
+        RoleFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("name", true) => query.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("name", false) => query.OrderBy(x => x.Name).ThenBy(x => x.Id),
+            ("description", true) => query.OrderByDescending(x => x.Description).ThenBy(x => x.Id),
+            ("description", false) => query.OrderBy(x => x.Description).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Id)
+        };
 }

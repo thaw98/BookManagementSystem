@@ -1,219 +1,246 @@
-﻿@page "/authors"
+@page "/authors"
 @attribute [Authorize(Roles = "Librarian")]
+@inherits ServerPagedComponentBase<AuthorDto>
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
-<PageTitle>Authors</PageTitle>
+<PageTitle>Authors — BMS</PageTitle>
 
-<h1>Authors</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Authors</h1>
+        <p class="page-subtitle">Maintain the author directory</p>
+    </div>
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Author
+    </MudButton>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
-    <div class="alert alert-info">
-        @Message
-    </div>
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">@Message</MudAlert>
 }
 
-<EditForm Model="Form"
-          OnValidSubmit="SaveAsync"
-          class="row g-2 mb-4">
+<CreateEntityDialog TModel="AuthorForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Author"
+                    SupportingText="Add an author to the directory."
+                    DialogWidth="MaxWidth.Small"
+                    Submit="CreateAuthorAsync"
+                    OnSuccess="OnAuthorCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Author name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Counter="150"
+                      MaxLength="150"
+                      AutoFocus="true" />
+    </FormFields>
+</CreateEntityDialog>
 
-    <DataAnnotationsValidator />
+<EditEntityDialog TModel="AuthorForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Author"
+                  SupportingText="Update the author's directory name."
+                  DialogWidth="MaxWidth.Small"
+                  Submit="UpdateAuthorAsync"
+                  OnSuccess="OnAuthorUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
+    <FormFields Context="model">
+        <MudTextField @bind-Value="model.Name"
+                      For="@(() => model.Name)"
+                      Label="Author name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Counter="150"
+                      MaxLength="150"
+                      AutoFocus="true" />
+    </FormFields>
+</EditEntityDialog>
 
-    <div class="col-md-6">
-        <InputText class="form-control"
-                   placeholder="Author name"
-                   @bind-Value="Form.Name" />
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <div class="d-flex align-center gap-2 flex-wrap">
+        <MudTextField T="string"
+                      @bind-Value="SearchText"
+                      Label="Search author"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Margin="Margin.Dense"
+                      Style="max-width:320px;" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync">Search</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFiltersAsync">Clear</MudButton>
     </div>
-
-    <div class="col-md-6">
-        <button class="btn btn-primary"
-                type="submit">
-            @(Form.Id == 0 ? "Create" : "Update")
-        </button>
-
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="Clear">
-            Clear
-        </button>
-    </div>
-
-</EditForm>
-
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control"
-               placeholder="Search author"
-               @bind="SearchText"
-               @bind:event="oninput" />
-    </div>
-</div>
+</MudPaper>
 
 @if (IsLoading)
 {
-    <p>Loading authors...</p>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
 }
-else if (!FilteredAuthors.Any())
-{
-    <div class="alert alert-secondary">
-        No authors found.
-    </div>
-}
-else
-{
-    <table class="table table-sm table-hover">
 
-        <thead>
-            <tr>
-                <th>Author Name</th>
-                <th></th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var author in FilteredAuthors)
-            {
-                <tr>
-                    <td>@author.Name</td>
-
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => Edit(author)">
-                            Edit
-                        </button>
-
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(author.Id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-    </table>
-}
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable T="AuthorDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+            <HeaderContent>
+                <MudTh><MudTableSortLabel T="AuthorDto" SortLabel="name">Author Name</MudTableSortLabel></MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Author Name">@context.Name</MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton id="@EditTriggerId(context.Id)"
+                                   Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="() => OpenEditDialog(context)"
+                                   aria-label="@($"Edit {context.Name}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteAsync(context.Id)"
+                                   aria-label="@($"Delete {context.Name}")" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4 mud-text-secondary">No authors found.</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+            </PagerContent>
+    </MudTable>
+</MudPaper>
 
 @code {
-    private List<AuthorDto> Authors { get; set; } = [];
-
-    private AuthorForm Form { get; set; } = new();
-
+    private const string AddTriggerId = "add-author-trigger";
+    private AuthorForm _createForm = new();
+    private AuthorForm _editForm = new();
+    private bool _createDialogOpen;
+    private bool _editDialogOpen;
+    private string? _editReturnFocusId;
     private string? SearchText { get; set; }
-
+    private string? _appliedSearchText;
     private string? Message { get; set; }
 
-    private bool IsLoading { get; set; }
-
-    private IEnumerable<AuthorDto> FilteredAuthors =>
-        Authors.Where(x =>
-            string.IsNullOrWhiteSpace(SearchText) ||
-            x.Name.Contains(
-                SearchText,
-                StringComparison.OrdinalIgnoreCase));
-
-    protected override async Task OnInitializedAsync()
+    protected override Task<Result<OffsetPagedResult<AuthorDto>>> FetchPageAsync(
+        TableState state,
+        CancellationToken cancellationToken)
     {
-        await LoadAuthorsAsync();
-    }
-
-    private async Task LoadAuthorsAsync()
-    {
-        IsLoading = true;
-
-        var result =
-            await Api.GetAsync<List<AuthorDto>>("api/Author");
-
-        Authors = result.Data ?? [];
-
-        if (!result.IsSuccess)
+        var queryParameters = new List<string>
         {
-            Message = result.Message;
-        }
-
-        IsLoading = false;
-    }
-
-    private void Edit(AuthorDto author)
-    {
-        Form = new AuthorForm
-        {
-            Id = author.Id,
-            Name = author.Name
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
         };
+        if (!string.IsNullOrWhiteSpace(_appliedSearchText))
+            queryParameters.Add($"search={Uri.EscapeDataString(_appliedSearchText)}");
+        AddSortingParameters(queryParameters, state);
 
-        Message = null;
+        return Api.GetAsync<OffsetPagedResult<AuthorDto>>(
+            "api/Author/paged?" + string.Join("&", queryParameters),
+            cancellationToken);
     }
 
-    private void Clear()
+    protected override void OnPageLoadSucceeded() => Message = null;
+
+    protected override void OnPageLoadFailed(string message) => Message = message;
+
+    private async Task SearchAsync()
     {
-        Form = new AuthorForm();
-        Message = null;
+        _appliedSearchText = string.IsNullOrWhiteSpace(SearchText)
+            ? null
+            : SearchText.Trim();
+        await ReloadFromFirstPageAsync();
     }
 
-    private async Task SaveAsync()
+    private async Task ClearFiltersAsync()
     {
-        if (string.IsNullOrWhiteSpace(Form.Name))
-        {
-            Message = "Author name is required.";
-            return;
-        }
+        SearchText = null;
+        _appliedSearchText = null;
+        await ReloadFromFirstPageAsync();
+    }
 
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>(
-                "api/Author",
-                new CreateAuthorRequest
-                {
-                    Name = Form.Name
-                });
+    private void OpenCreateDialog()
+    {
+        _createForm = new AuthorForm();
+        Message = null;
+        _createDialogOpen = true;
+    }
 
-            Message = result.Message;
+    private void OpenEditDialog(AuthorDto author)
+    {
+        _editForm = new AuthorForm { Id = author.Id, Name = author.Name };
+        _editReturnFocusId = EditTriggerId(author.Id);
+        Message = null;
+        _editDialogOpen = true;
+    }
 
-            if (!result.IsSuccess)
-            {
-                return;
-            }
-        }
-        else
-        {
-            var result = await Api.PutAsync<AuthorDto>(
-                $"api/Author/{Form.Id}",
-                new UpdateAuthorRequest
-                {
-                    Name = Form.Name
-                });
+    private async Task<FormSubmitResult> CreateAuthorAsync(AuthorForm form)
+    {
+        var result = await Api.PostAsync<long>("api/Author", new CreateAuthorRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-            Message = result.Message;
+    private async Task<FormSubmitResult> UpdateAuthorAsync(AuthorForm form)
+    {
+        var result = await Api.PutAsync<AuthorDto>(
+            $"api/Author/{form.Id}",
+            new UpdateAuthorRequest { Name = form.Name.Trim() });
+        return new FormSubmitResult(result.IsSuccess, result.Message);
+    }
 
-            if (!result.IsSuccess)
-            {
-                return;
-            }
-        }
+    private async Task OnAuthorCreatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadFromFirstPageAsync();
+        Snackbar.Add(result.Message ?? "Author created successfully.", Severity.Success);
+    }
 
-        Form = new AuthorForm();
-
-        await LoadAuthorsAsync();
+    private async Task OnAuthorUpdatedAsync(FormSubmitResult result)
+    {
+        Message = null;
+        await ReloadCurrentPageAsync();
+        Snackbar.Add(result.Message ?? "Author updated successfully.", Severity.Success);
     }
 
     private async Task DeleteAsync(long id)
     {
-        var result =
-            await Api.DeleteAsync<bool>($"api/Author/{id}");
-
-        Message = result.Message;
-
+        var result = await Api.DeleteAsync<bool>($"api/Author/{id}");
         if (result.IsSuccess)
         {
-            await LoadAuthorsAsync();
+            await ReloadAfterDeleteAsync();
+            Snackbar.Add(result.Message ?? "Author deleted successfully.", Severity.Success);
+        }
+        else
+        {
+            Message = result.Message;
         }
     }
+
+    private static string EditTriggerId(long id) => $"edit-author-{id}";
 
     private sealed class AuthorForm
     {
         public long Id { get; set; }
 
+        [Required(ErrorMessage = "Author name is required.")]
+        [MaxLength(150, ErrorMessage = "Name cannot exceed 150 characters.")]
         public string Name { get; set; } = "";
     }
 }

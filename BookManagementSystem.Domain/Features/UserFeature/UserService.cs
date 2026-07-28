@@ -1,5 +1,5 @@
-using Contracts;
 using Contracts.User;
+using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Auth;
@@ -10,6 +10,8 @@ namespace BookManagementSystem.Domain.Features.UserFeature;
 
 public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher, IBaseService baseService) : IUserService
 {
+    private const string SelfAccountActionsLockedMessage = "Actions are locked for your own account.";
+
     public async Task<Result<List<UserListDto>>> GetAllAsync(CancellationToken cancellationToken)
     {
         var users = await db.Users.AsNoTracking()
@@ -27,6 +29,47 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             .ToListAsync(cancellationToken);
 
         return Result<List<UserListDto>>.Success(users);
+    }
+
+    public async Task<Result<OffsetPagedResult<UserListDto>>> GetPagedAsync(
+        UserFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Users
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim();
+            query = query.Where(x => x.Email.Contains(email));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            query = query.Where(x => x.Email.Contains(search));
+        }
+
+        if (request.RoleId.HasValue)
+            query = query.Where(x => x.RoleId == request.RoleId.Value);
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyPagedOrdering(source, request),
+            x => new UserListDto
+            {
+                Id = x.Id,
+                Email = x.Email,
+                RoleId = x.RoleId,
+                RoleName = x.Role.Name,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<UserListDto>>.Success(page);
     }
 
     public async Task<Result<UserDetailDto>> GetByIdAsync(long id, CancellationToken cancellationToken)
@@ -83,6 +126,9 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<UserDetailDto>> UpdateAsync(long id, UpdateUserRequest request, CancellationToken cancellationToken)
     {
+        if (baseService.UserId == id)
+            return Result<UserDetailDto>.Forbidden(SelfAccountActionsLockedMessage);
+
         var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null)
             return Result<UserDetailDto>.NotFound();
@@ -105,10 +151,6 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         if (await db.Users.AnyAsync(x => x.Id != id && x.Email == email, cancellationToken))
             return Result<UserDetailDto>.Duplicate("Email already exists.");
 
-        var currentUserId = baseService.UserId;
-        if (currentUserId == id && !request.IsActive)
-            return Result<UserDetailDto>.Validation("You cannot deactivate your own account.");
-
         var removesAdmin = user.RoleId == RoleNames.AdminId && (request.RoleId != RoleNames.AdminId || !request.IsActive);
         if (removesAdmin && !await HasAnotherActiveAdminAsync(id, cancellationToken))
             return Result<UserDetailDto>.Validation("The system must keep at least one active Admin.");
@@ -128,6 +170,9 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<bool>> ResetPasswordAsync(long id, ResetPasswordRequest request, CancellationToken cancellationToken)
     {
+        if (baseService.UserId == id)
+            return Result<bool>.Forbidden(SelfAccountActionsLockedMessage);
+
         if (string.IsNullOrWhiteSpace(request.Password))
             return Result<bool>.Validation("Password is required.");
 
@@ -143,12 +188,12 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
 
     public async Task<Result<bool>> DeleteAsync(long id, CancellationToken cancellationToken)
     {
+        if (baseService.UserId == id)
+            return Result<bool>.Forbidden(SelfAccountActionsLockedMessage);
+
         var user = await db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null)
             return Result<bool>.NotFound();
-
-        if (baseService.UserId == id)
-            return Result<bool>.Validation("You cannot delete your own account.");
 
         if (user.RoleId == RoleNames.AdminId && !await HasAnotherActiveAdminAsync(id, cancellationToken))
             return Result<bool>.Validation("The system must keep at least one active Admin.");
@@ -171,4 +216,18 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static IOrderedQueryable<User> ApplyPagedOrdering(
+        IQueryable<User> query,
+        UserFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("email", true) => query.OrderByDescending(x => x.Email).ThenBy(x => x.Id),
+            ("email", false) => query.OrderBy(x => x.Email).ThenBy(x => x.Id),
+            ("role", true) => query.OrderByDescending(x => x.Role.Name).ThenBy(x => x.Id),
+            ("role", false) => query.OrderBy(x => x.Role.Name).ThenBy(x => x.Id),
+            ("active", true) => query.OrderByDescending(x => x.IsActive).ThenBy(x => x.Id),
+            ("active", false) => query.OrderBy(x => x.IsActive).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Email).ThenBy(x => x.Id)
+        };
 }

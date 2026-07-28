@@ -1,29 +1,196 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Routing
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-    <main>
-        <div class="top-row px-4">
-            <AuthorizeView>
-                <Authorized>
-                    <form method="post" action="/account/logout">
-                        <button class="btn btn-link" type="submit">Logout</button>
-                    </form>
-                </Authorized>
-            </AuthorizeView>
+<MudLayout>
+    <MudAppBar Elevation="0" Class="bms-appbar" Dense="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="ToggleDrawer"
+                       aria-label="Toggle menu" />
+        <div class="topbar-context">
+            <div class="topbar-eyebrow">BMS</div>
+            <div class="topbar-page">@_pageTitle</div>
         </div>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized Context="auth">
+                <MudMenu AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight"
+                         Class="profile-menu-panel">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Text" Class="profile-trigger">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                @GetInitial(auth.User)
+                            </MudAvatar>
+                            <MudHidden Breakpoint="Breakpoint.Xs">
+                                <div class="profile-meta">
+                                    <span class="name">@GetEmail(auth.User)</span>
+                                    <span class="role-badge @GetRoleCss(auth.User)">@GetRole(auth.User)</span>
+                                </div>
+                            </MudHidden>
+                            <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="profile-chevron" />
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <div class="pd-header">
+                            <MudAvatar Size="Size.Medium" Color="Color.Primary">
+                                @GetInitial(auth.User)
+                            </MudAvatar>
+                            <div class="pd-identity">
+                                <div class="pd-name">@GetEmail(auth.User)</div>
+                                <div class="pd-email">@GetRole(auth.User)</div>
+                                <span class="role-badge @GetRoleCss(auth.User)">@GetRole(auth.User)</span>
+                            </div>
+                        </div>
+                        <MudDivider Class="my-1" />
+                        <MudMenuItem Href="/profile"
+                                     Icon="@Icons.Material.Filled.Person"
+                                     Class="pd-action pd-profile">
+                            Profile
+                        </MudMenuItem>
+                        <form method="post" action="/account/logout" class="pd-action-form">
+                            <MudButton ButtonType="ButtonType.Submit"
+                                       Variant="Variant.Text"
+                                       StartIcon="@Icons.Material.Filled.Logout"
+                                       Class="pd-action pd-signout">
+                                Logout
+                            </MudButton>
+                        </form>
+                    </ChildContent>
+                </MudMenu>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+    <MudDrawer @bind-Open="_drawerOpen"
+               ClipMode="DrawerClipMode.Always"
+               Elevation="0"
+               Variant="@DrawerVariant.Mini"
+               OpenMiniOnHover="false"
+               Class="bms-drawer"
+               Breakpoint="Breakpoint.Md">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent Class="content-pad">
+        @Body
+    </MudMainContent>
+</MudLayout>
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
     <a href="" class="reload">Reload</a>
-    <a class="dismiss">x</a>
+    <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private bool _drawerOpen = true;
+    private string _pageTitle = "Dashboard";
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2563eb",
+            PrimaryContrastText = "#ffffff",
+            Secondary = "#64748b",
+            AppbarBackground = "#ffffff",
+            AppbarText = "#111827",
+            Background = "#f3f4f6",
+            Surface = "#ffffff",
+            DrawerBackground = "#eef1f6",
+            DrawerText = "#3a4556",
+            DrawerIcon = "#7b8798",
+            Success = "#10b981",
+            Error = "#ef4444",
+            TextPrimary = "#111827",
+            TextSecondary = "#6b7280",
+            ActionDefault = "#6b7280",
+            LinesDefault = "#e5e7eb"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"]
+            },
+            H1 = new H1Typography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "800" },
+            H2 = new H2Typography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "800" },
+            H3 = new H3Typography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "700" },
+            H4 = new H4Typography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "700" },
+            H5 = new H5Typography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "700" },
+            H6 = new H6Typography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "700" },
+            Button = new ButtonTypography { FontFamily = ["Plus Jakarta Sans", "Helvetica", "Arial", "sans-serif"], FontWeight = "600", TextTransform = "none" }
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "10px"
+        }
+    };
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        _pageTitle = ResolveTitle(Navigation.Uri);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _pageTitle = ResolveTitle(e.Location);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private static string ResolveTitle(string uri)
+    {
+        var path = new Uri(uri).AbsolutePath.Trim('/').ToLowerInvariant();
+        return path switch
+        {
+            "" or "home" => "Dashboard",
+            "users" => "Users",
+            "roles" => "Roles",
+            "profile" => "Profile",
+            "books" => "Books",
+            "authors" => "Authors",
+            "categories" => "Categories",
+            _ => "BMS"
+        };
+    }
+
+    private static string GetEmail(System.Security.Claims.ClaimsPrincipal user) =>
+        user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "User";
+
+    private static string GetRole(System.Security.Claims.ClaimsPrincipal user) =>
+        user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
+
+    private static string GetRoleCss(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var role = GetRole(user).ToLowerInvariant();
+        return role switch
+        {
+            "admin" => "admin",
+            "librarian" => "librarian",
+            _ => "member"
+        };
+    }
+
+    private static string GetInitial(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var email = GetEmail(user);
+        return string.IsNullOrWhiteSpace(email) ? "?" : email[0].ToString().ToUpperInvariant();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}
