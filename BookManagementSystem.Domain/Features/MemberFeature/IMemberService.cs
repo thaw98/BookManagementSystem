@@ -1,5 +1,5 @@
-﻿using Contracts;
-using Contracts.Member;
+﻿using Contracts.Member;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.MemberFeature;
 

@@ -1,5 +1,5 @@
-﻿using Contracts;
-using Contracts.Borrow;
+﻿using Contracts.Borrow;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.BorrowFeature;
 

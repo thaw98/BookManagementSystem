@@ -1,8 +1,8 @@
-﻿using Contracts;
-using Contracts.Borrow;
+﻿using Contracts.Borrow;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.BorrowFeature;
 
