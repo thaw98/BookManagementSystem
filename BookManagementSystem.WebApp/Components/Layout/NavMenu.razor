@@ -37,6 +37,31 @@
             <MudNavLink Href="books" Icon="@Icons.Material.Filled.AutoStories">
                 Books
             </MudNavLink>
+            <MudNavLink Href="members"
+                        Icon="@Icons.Material.Filled.Group">
+                Members
+            </MudNavLink>
+
+            <MudNavLink Href="borrow-history"
+                        Icon="@Icons.Material.Filled.History">
+                Borrow History
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+    <AuthorizeView Roles="Library Member">
+        <Authorized>
+            <MudNavLink Href="library"
+                        Icon="@Icons.Material.Filled.LocalLibrary">
+                Library
+            </MudNavLink>
+            <MudNavLink Href="my-borrowed-books"
+                        Icon="@Icons.Material.Filled.Bookmark">
+                My Borrowed Books
+            </MudNavLink>
+            <MudNavLink Href="my-history"
+                        Icon="@Icons.Material.Filled.History">
+                My History
+            </MudNavLink>
         </Authorized>
     </AuthorizeView>
 </MudNavMenu>
