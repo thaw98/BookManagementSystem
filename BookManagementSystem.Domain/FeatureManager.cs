@@ -1,4 +1,5 @@
 using BookManagementSystem.Domain.Features.AuthFeature;
+using BookManagementSystem.Domain.Features.AuditLogFeature;
 using BookManagementSystem.Domain.Features.AuthorFeature;
 using BookManagementSystem.Domain.Features.CategoryFeature;
 using BookManagementSystem.Domain.Features.MemberFeature;
@@ -24,6 +25,7 @@ public static class FeatureManager
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IBorrowService, BorrowService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IDbSeeder, DbSeeder>();

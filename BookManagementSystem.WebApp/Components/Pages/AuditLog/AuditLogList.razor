@@ -1,0 +1,212 @@
+@page "/audit-logs"
+@attribute [Authorize(Roles = "Admin")]
+@inherits ServerPagedComponentBase<AuditLogDto>
+@inject ApiClient Api
+@inject IDialogService DialogService
+
+<PageTitle>Audit Log — BMS</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Audit Log</h1>
+        <p class="page-subtitle">Review immutable system activity</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@Message</MudAlert>
+}
+
+<MudPaper Class="bms-panel bms-panel-pad mb-4" Elevation="0">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" @bind-Value="SearchText" Label="Search"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string" @bind-Value="EntityType" Label="Entity type"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                @foreach (var value in FilterOptions.EntityTypes)
+                {
+                    <MudSelectItem T="string" Value="@value">@value</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string" @bind-Value="Action" Label="Action"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                @foreach (var value in FilterOptions.Actions)
+                {
+                    <MudSelectItem T="string" Value="@value">@value</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" @bind-Value="Actor" Label="Actor"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                @foreach (var value in FilterOptions.Actors)
+                {
+                    <MudSelectItem T="string" Value="@value.Key">
+                        @value.DisplayName@(string.IsNullOrWhiteSpace(value.Email) ? "" : $" — {value.Email}")
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker @bind-Date="FromDate" Label="From date (Myanmar)"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker @bind-Date="ToDate" Label="To date (Myanmar)"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyAsync">Apply</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearAsync">Clear</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable T="AuditLogDto" @ref="Table" ServerData="LoadServerDataAsync"
+              RowsPerPage="10" Hover="true" Dense="true" Breakpoint="Breakpoint.Md"
+              Class="bms-table">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="AuditLogDto" SortLabel="occurredAt" InitialDirection="SortDirection.Descending">Time</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="AuditLogDto" SortLabel="entity">Entity</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="AuditLogDto" SortLabel="action">Action</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="AuditLogDto" SortLabel="actor">Summary</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align:right">Details</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Time">@FormatMyanmar(context.OccurredAtUtc)</MudTd>
+            <MudTd DataLabel="Entity">
+                <MudText Typo="Typo.body2">@context.EntityDisplayName</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.EntityType #@context.EntityId</MudText>
+            </MudTd>
+            <MudTd DataLabel="Action">
+                <MudChip T="string" Size="Size.Small" Color="@ActionColor(context.Action)" Variant="Variant.Outlined">
+                    @context.Action
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Summary">@Narrative(context)</MudTd>
+            <MudTd DataLabel="Details" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                               OnClick="() => ShowDetailsAsync(context)"
+                               aria-label="@($"View details for audit event {context.Id}")" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">No audit events found.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private static readonly TimeZoneInfo MyanmarTimeZone = ResolveMyanmarTimeZone();
+    private AuditLogFilterOptions FilterOptions { get; set; } = new();
+    private string? SearchText { get; set; }
+    private string? EntityType { get; set; }
+    private string? Action { get; set; }
+    private string? Actor { get; set; }
+    private DateTime? FromDate { get; set; }
+    private DateTime? ToDate { get; set; }
+    private AppliedFilters _applied = new();
+    private string? Message { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<AuditLogFilterOptions>("api/AuditLog/filter-options");
+        if (result.IsSuccess && result.Data is not null)
+            FilterOptions = result.Data;
+        else
+            Message = result.Message;
+    }
+
+    protected override Task<Result<OffsetPagedResult<AuditLogDto>>> FetchPageAsync(
+        TableState state, CancellationToken cancellationToken)
+    {
+        var values = new List<string> { $"page={state.Page + 1}", $"pageSize={state.PageSize}" };
+        Add(values, "search", _applied.Search);
+        Add(values, "entityType", _applied.EntityType);
+        Add(values, "action", _applied.Action);
+        Add(values, "actor", _applied.Actor);
+        if (_applied.FromDate.HasValue)
+            Add(values, "fromDateLocal", _applied.FromDate.Value.ToString("yyyy-MM-dd"));
+        if (_applied.ToDate.HasValue)
+            Add(values, "toDateLocal", _applied.ToDate.Value.ToString("yyyy-MM-dd"));
+        AddSortingParameters(values, state);
+        return Api.GetAsync<OffsetPagedResult<AuditLogDto>>(
+            "api/AuditLog/paged?" + string.Join("&", values), cancellationToken);
+    }
+
+    protected override void OnPageLoadSucceeded() => Message = null;
+    protected override void OnPageLoadFailed(string message) => Message = message;
+
+    private async Task ApplyAsync()
+    {
+        _applied = new(
+            string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim(),
+            EntityType, Action, Actor, FromDate?.Date, ToDate?.Date);
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        SearchText = EntityType = Action = Actor = null;
+        FromDate = ToDate = null;
+        _applied = new();
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ShowDetailsAsync(AuditLogDto log)
+    {
+        var parameters = new DialogParameters<AuditLogDetailsDialog> { { x => x.Log, log } };
+        await DialogService.ShowAsync<AuditLogDetailsDialog>(
+            "Audit event details", parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    private static string Narrative(AuditLogDto log) =>
+        $"{log.EntityDisplayName} was {log.Action.ToLowerInvariant()} by {log.ActorDisplayName} on {FormatMyanmar(log.OccurredAtUtc)}.";
+
+    private static string FormatMyanmar(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), MyanmarTimeZone)
+            .ToString("dd MMM yyyy, h:mm tt");
+
+    private static Color ActionColor(string action) => action switch
+    {
+        "Created" => Color.Success,
+        "Deleted" => Color.Error,
+        _ => Color.Info
+    };
+
+    private static void Add(List<string> values, string name, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            values.Add($"{name}={Uri.EscapeDataString(value)}");
+    }
+
+    private static TimeZoneInfo ResolveMyanmarTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Yangon"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Myanmar Standard Time"); }
+    }
+
+    private sealed record AppliedFilters(
+        string? Search = null,
+        string? EntityType = null,
+        string? Action = null,
+        string? Actor = null,
+        DateTime? FromDate = null,
+        DateTime? ToDate = null);
+}

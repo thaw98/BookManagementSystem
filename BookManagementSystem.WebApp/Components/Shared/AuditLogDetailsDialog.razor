@@ -1,0 +1,108 @@
+@using System.Text.Json
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">Audit event details</MudText>
+            <MudSimpleTable Dense="true" Striped="true">
+                <tbody>
+                    <tr><th scope="row">Entity</th><td>@Log.EntityType — @Log.EntityDisplayName (#@Log.EntityId)</td></tr>
+                    <tr><th scope="row">Action</th><td>@Log.Action</td></tr>
+                    <tr><th scope="row">Actor</th><td>@ActorText</td></tr>
+                    <tr><th scope="row">Time</th><td>@FormatMyanmar(Log.OccurredAtUtc)</td></tr>
+                    <tr><th scope="row">Migrated history</th><td>@(Log.IsBackfilled ? "Yes" : "No")</td></tr>
+                </tbody>
+            </MudSimpleTable>
+
+            <MudText Typo="Typo.subtitle1">Field changes</MudText>
+            @if (Changes.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    @(Log.IsBackfilled
+                        ? "Field-level details are unavailable for this migrated historical event."
+                        : "No field-level values were recorded for this event.")
+                </MudAlert>
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Striped="true">
+                    <thead>
+                        <tr><th>Field</th><th>Old value</th><th>New value</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var change in Changes)
+                        {
+                            <tr>
+                                <td>@change.Field</td>
+                                <td>@change.OldValue</td>
+                                <td>@change.NewValue</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public AuditLogDto Log { get; set; } = null!;
+
+    private List<ChangeRow> Changes { get; set; } = [];
+    private string ActorText => string.IsNullOrWhiteSpace(Log.ActorEmail)
+        ? Log.ActorDisplayName
+        : $"{Log.ActorDisplayName} ({Log.ActorEmail})";
+
+    protected override void OnParametersSet() => Changes = ParseChanges(Log.ChangeDetailsJson);
+
+    private void Close() => MudDialog.Close();
+
+    private static List<ChangeRow> ParseChanges(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.EnumerateObject().Select(property =>
+            {
+                if (property.Value.TryGetProperty("changed", out _))
+                    return new ChangeRow(property.Name, "Protected", "Changed");
+
+                var oldValue = property.Value.TryGetProperty("oldValue", out var oldElement)
+                    ? Display(oldElement) : "—";
+                var newValue = property.Value.TryGetProperty("newValue", out var newElement)
+                    ? Display(newElement) : "—";
+                return new ChangeRow(property.Name, oldValue, newValue);
+            }).ToList();
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string Display(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Null => "—",
+        JsonValueKind.String => value.GetString() ?? "—",
+        _ => value.ToString()
+    };
+
+    private static string FormatMyanmar(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utc, DateTimeKind.Utc),
+            ResolveMyanmarTimeZone()).ToString("dd MMM yyyy, h:mm tt");
+
+    private static TimeZoneInfo ResolveMyanmarTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Yangon"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Myanmar Standard Time"); }
+    }
+
+    private sealed record ChangeRow(string Field, string OldValue, string NewValue);
+}

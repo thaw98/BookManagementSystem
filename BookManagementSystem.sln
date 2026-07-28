@@ -1,5 +1,4 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.7.11919.86 stable
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -14,6 +13,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp", "BookManagementSystem.WebApp\WebApp.csproj", "{37EF5148-755F-4F0E-8CF9-FE716715C09D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookManagementSystem.Api", "BookManagementSystem.Api\BookManagementSystem.Api.csproj", "{E1C6A525-164B-4EB3-8D7A-7C3AE362114D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookManagementSystem.Tests", "BookManagementSystem.Tests\BookManagementSystem.Tests.csproj", "{30D80B1F-7AF0-42CB-9E50-91330F6EAF08}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +46,10 @@ Global
 		{E1C6A525-164B-4EB3-8D7A-7C3AE362114D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1C6A525-164B-4EB3-8D7A-7C3AE362114D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1C6A525-164B-4EB3-8D7A-7C3AE362114D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30D80B1F-7AF0-42CB-9E50-91330F6EAF08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30D80B1F-7AF0-42CB-9E50-91330F6EAF08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30D80B1F-7AF0-42CB-9E50-91330F6EAF08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30D80B1F-7AF0-42CB-9E50-91330F6EAF08}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

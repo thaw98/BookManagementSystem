@@ -1,3 +1,4 @@
+using Contracts.Auth;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using MudBlazor.Services;
 using WebApp.Components;
@@ -57,7 +58,9 @@ app.MapPost("/account/login", async (HttpContext context, AuthService authServic
         cancellationToken);
 
     if (!result.IsSuccess)
-        return Results.Redirect("/login?error=1");
+        return Results.Redirect(result.Code == AuthFailureCodes.DeletedAccount
+            ? "/login?error=deleted"
+            : "/login?error=1");
 
     var returnUrl = form["returnUrl"].ToString();
     return Results.Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);

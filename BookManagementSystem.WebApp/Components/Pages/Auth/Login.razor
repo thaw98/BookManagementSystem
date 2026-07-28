@@ -21,6 +21,12 @@
             Invalid email or password.
         </MudAlert>
     }
+    else if (Error == "deleted")
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
+            Your account has been deleted. Contact an administrator.
+        </MudAlert>
+    }
 
     <form method="post" action="/account/login">
         <input type="hidden" name="returnUrl" value="@ReturnUrl" />

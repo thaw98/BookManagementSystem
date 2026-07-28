@@ -12,13 +12,21 @@ public sealed class AuthService(AppDbContext db, IPasswordHasher passwordHasher,
     {
         var email = NormalizeEmail(request.Email);
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.Password))
-            return Result<TokenResponse>.Unauthorized();
+            return Result<TokenResponse>.Unauthorized("Invalid email or password.");
 
-        var user = await db.Users.Include(x => x.Role)
+        var user = await db.Users.IgnoreQueryFilters().Include(x => x.Role)
             .FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
 
-        if (user is null || !user.IsActive || !passwordHasher.VerifyPassword(user.PasswordHash, request.Password))
-            return Result<TokenResponse>.Unauthorized();
+        if (user is null || !passwordHasher.VerifyPassword(user.PasswordHash, request.Password))
+            return Result<TokenResponse>.Unauthorized("Invalid email or password.");
+
+        if (user.IsDeleted)
+            return Result<TokenResponse>.Unauthorized(
+                "Your account has been deleted. Contact an administrator.",
+                AuthFailureCodes.DeletedAccount);
+
+        if (!user.IsActive)
+            return Result<TokenResponse>.Unauthorized("Invalid email or password.");
 
         return await IssueTokenPairAsync(user, null, cancellationToken);
     }
@@ -56,7 +64,7 @@ public sealed class AuthService(AppDbContext db, IPasswordHasher passwordHasher,
 
     private async Task<Result<TokenResponse>> IssueTokenPairAsync(User user, RefreshToken? tokenToRotate, CancellationToken cancellationToken)
     {
-        var accessToken = jwtTokenService.CreateAccessToken(user.Id, user.Email, user.Role.Name);
+        var accessToken = jwtTokenService.CreateAccessToken(user.Id, user.Email, user.Role.Name, user.FullName);
         var refreshToken = jwtTokenService.CreateRefreshToken();
 
         if (tokenToRotate is not null)
@@ -82,7 +90,8 @@ public sealed class AuthService(AppDbContext db, IPasswordHasher passwordHasher,
             RefreshTokenExpiresAt = refreshToken.ExpiresAt,
             UserId = user.Id,
             Email = user.Email,
-            Role = user.Role.Name
+            Role = user.Role.Name,
+            FullName = user.FullName
         });
     }
 

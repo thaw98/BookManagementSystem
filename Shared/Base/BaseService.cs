@@ -14,4 +14,10 @@ public sealed class BaseService(IHttpContextAccessor httpContextAccessor) : IBas
             return long.TryParse(value, out var id) ? id : null;
         }
     }
+
+    public string? UserDisplayName =>
+        httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
+
+    public string? UserEmail =>
+        httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Email);
 }
