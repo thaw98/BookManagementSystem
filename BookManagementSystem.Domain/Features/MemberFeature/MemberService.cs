@@ -1,9 +1,9 @@
-﻿using Contracts;
-using Contracts.Member;
+﻿using Contracts.Member;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Auth;
 using Shared.Constants;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.MemberFeature;
 

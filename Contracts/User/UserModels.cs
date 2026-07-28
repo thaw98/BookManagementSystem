@@ -23,6 +23,10 @@ public record class UserDetailDto : UserListDto
 public record class CreateUserRequest
 {
     [Required]
+    [MaxLength(150, ErrorMessage = "Full name cannot exceed 150 characters.")]
+    public string FullName { get; set; } = "";
+
+    [Required]
     [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
     public string Email { get; set; } = "";
 
@@ -38,6 +42,10 @@ public record class CreateUserRequest
 
 public record class UpdateUserRequest
 {
+    [Required]
+    [MaxLength(150, ErrorMessage = "Full name cannot exceed 150 characters.")]
+    public string FullName { get; set; } = "";
+
     [Required]
     [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
     public string Email { get; set; } = "";
