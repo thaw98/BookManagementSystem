@@ -84,9 +84,11 @@ public class AppDbContext : DbContext
                 case EntityState.Deleted when entry.Entity is AuditableEntity deleted:
                     entry.State = EntityState.Modified;
                     entry.Property(nameof(BaseEntity.CreatedAt)).IsModified = false;
+                    entry.Property(nameof(BaseEntity.UpdatedAt)).IsModified = false;
+                    entry.Property(nameof(AuditableEntity.UpdatedBy)).IsModified = false;
                     deleted.IsDeleted = true;
-                    deleted.UpdatedAt = now;
-                    deleted.UpdatedBy = userId;
+                    deleted.DeletedBy = userId;
+                    deleted.DeletedAt = now;
                     break;
             }
         }

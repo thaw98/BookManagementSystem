@@ -112,11 +112,8 @@
                                    Color="Color.Primary"
                                    OnClick="() => OpenEditDialog(context)"
                                    aria-label="@($"Edit {context.Name}")" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="() => DeleteAsync(context.Id)"
-                                   aria-label="@($"Delete {context.Name}")" />
+                    <DeleteIconButton DisplayName="@context.Name"
+                                      OnDelete="() => DeleteAsync(context.Id)" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>

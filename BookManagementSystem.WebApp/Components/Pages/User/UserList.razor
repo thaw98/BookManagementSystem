@@ -221,11 +221,8 @@
                                    Color="Color.Warning"
                                    OnClick="() => OpenResetDialog(context)"
                                    aria-label="@($"Reset password for {context.Email}")" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="() => DeleteAsync(context.Id)"
-                                   aria-label="@($"Delete {context.Email}")" />
+                    <DeleteIconButton DisplayName="@context.Email"
+                                      OnDelete="() => DeleteAsync(context.Id)" />
                 }
             </MudTd>
         </RowTemplate>

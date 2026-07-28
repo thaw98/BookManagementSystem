@@ -1,0 +1,53 @@
+@inject IDialogService DialogService
+
+<MudIconButton Icon="@Icons.Material.Filled.Delete"
+               Size="Size.Small"
+               Color="Color.Error"
+               Variant="Variant.Filled"
+               Disabled="@(Disabled || _isDeleting)"
+               OnClick="ConfirmDeleteAsync"
+               aria-label="@($"Delete {DisplayName}")" />
+
+@code {
+    [Parameter, EditorRequired]
+    public string DisplayName { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public EventCallback OnDelete { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private bool _isDeleting;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (Disabled || _isDeleting)
+            return;
+
+        var parameters = new DialogParameters
+        {
+            [nameof(ConfirmDialog.Title)] = $"Delete {DisplayName}",
+            [nameof(ConfirmDialog.Message)] =
+                $"Are you sure you want to delete {DisplayName}?"
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(
+            $"Delete {DisplayName}",
+            parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+            return;
+
+        _isDeleting = true;
+        try
+        {
+            await OnDelete.InvokeAsync();
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+}

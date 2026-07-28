@@ -5,4 +5,6 @@ public abstract class AuditableEntity : BaseEntity
     public bool IsDeleted { get; set; }
     public long? CreatedBy { get; set; }
     public long? UpdatedBy { get; set; }
+    public long? DeletedBy { get; set; }
+    public DateTime? DeletedAt { get; set; }
 }

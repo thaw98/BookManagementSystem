@@ -142,10 +142,8 @@ else if (FilteredMembers.Any())
                             Edit
                         </button>
 
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(member.Id)">
-                            Delete
-                        </button>
+                        <DeleteIconButton DisplayName="@member.FullName"
+                                          OnDelete="() => DeleteAsync(member.Id)" />
                     </td>
                 </tr>
             }
