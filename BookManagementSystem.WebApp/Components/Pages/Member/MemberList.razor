@@ -1,0 +1,359 @@
+﻿@page "/members"
+@attribute [Authorize(Roles = "Librarian")]
+@inject ApiClient Api
+
+<PageTitle>Library Members</PageTitle>
+
+<h1>Library Members</h1>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert @(IsSuccess ? "alert-success" : "alert-danger")">
+        @Message
+    </div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input class="form-control"
+               placeholder="Search by member name"
+               @bind="NameFilter"
+               @bind:event="oninput" />
+    </div>
+
+    <div class="col-md-4">
+        <input class="form-control"
+               placeholder="Search by email"
+               @bind="EmailFilter"
+               @bind:event="oninput" />
+    </div>
+
+    <div class="col-md-2">
+        <select class="form-select" @bind="StatusFilter">
+            <option value="">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+    </div>
+</div>
+
+<EditForm Model="Form"
+          OnValidSubmit="SaveAsync"
+          class="row g-2 mb-4">
+
+    <DataAnnotationsValidator />
+
+    <div class="col-md-3">
+        <InputText class="form-control"
+                   placeholder="Full name"
+                   @bind-Value="Form.FullName" />
+    </div>
+
+    <div class="col-md-3">
+        <InputText class="form-control"
+                   placeholder="Email"
+                   @bind-Value="Form.Email" />
+    </div>
+
+    @if (Form.Id == 0)
+    {
+        <div class="col-md-2">
+            <InputText class="form-control"
+                       type="password"
+                       placeholder="Password"
+                       @bind-Value="Form.Password" />
+        </div>
+
+        <div class="col-md-2">
+            <InputText class="form-control"
+                       type="password"
+                       placeholder="Confirm password"
+                       @bind-Value="Form.ConfirmPassword" />
+        </div>
+    }
+
+    <div class="col-md-2 form-check pt-2">
+        <InputCheckbox class="form-check-input"
+                       @bind-Value="Form.IsActive" />
+
+        <label class="form-check-label">
+            Active
+        </label>
+    </div>
+
+    <div class="col-md-3">
+        <button class="btn btn-primary"
+                type="submit"
+                disabled="@IsSaving">
+            @(Form.Id == 0 ? "Create" : "Update")
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                type="button"
+                @onclick="Clear">
+            Clear
+        </button>
+    </div>
+</EditForm>
+
+@if (IsLoading)
+{
+    <p>Loading members...</p>
+}
+else if (FilteredMembers.Any())
+{
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Active</th>
+                <th>Created At</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var member in FilteredMembers)
+            {
+                <tr>
+                    <td>@member.FullName</td>
+                    <td>@member.Email</td>
+                    <td>
+                        @if (member.IsActive)
+                        {
+                            <span class="badge bg-success">
+                                Active
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">
+                                Inactive
+                            </span>
+                        }
+                    </td>
+                    <td>
+                        @member.CreatedAt.ToString("yyyy-MM-dd")
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => Edit(member)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => DeleteAsync(member.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-secondary">
+        No library members found.
+    </div>
+}
+
+@code {
+    private List<MemberListDto> Members { get; set; } = [];
+
+    private MemberForm Form { get; set; } = new();
+
+    private string? NameFilter { get; set; }
+
+    private string? EmailFilter { get; set; }
+
+    private string? StatusFilter { get; set; }
+
+    private string? Message { get; set; }
+
+    private bool IsSuccess { get; set; }
+
+    private bool IsLoading { get; set; }
+
+    private bool IsSaving { get; set; }
+
+    private IEnumerable<MemberListDto> FilteredMembers =>
+        Members.Where(member =>
+            (string.IsNullOrWhiteSpace(NameFilter) ||
+             member.FullName.Contains(
+                 NameFilter,
+                 StringComparison.OrdinalIgnoreCase))
+            &&
+            (string.IsNullOrWhiteSpace(EmailFilter) ||
+             member.Email.Contains(
+                 EmailFilter,
+                 StringComparison.OrdinalIgnoreCase))
+            &&
+            (string.IsNullOrWhiteSpace(StatusFilter) ||
+             StatusFilter == "active" && member.IsActive ||
+             StatusFilter == "inactive" && !member.IsActive));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMembersAsync();
+    }
+
+    private async Task LoadMembersAsync()
+    {
+        IsLoading = true;
+
+        var result =
+            await Api.GetAsync<List<MemberListDto>>("api/Member");
+
+        Members = result.Data ?? [];
+
+        if (!result.IsSuccess)
+        {
+            SetMessage(result.Message, false);
+        }
+
+        IsLoading = false;
+    }
+
+    private void Edit(MemberListDto member)
+    {
+        Form = new MemberForm
+        {
+            Id = member.Id,
+            FullName = member.FullName,
+            Email = member.Email,
+            IsActive = member.IsActive
+        };
+
+        Message = null;
+    }
+
+    private void Clear()
+    {
+        Form = new MemberForm
+        {
+            IsActive = true
+        };
+
+        Message = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Form.FullName))
+        {
+            SetMessage("Full name is required.", false);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Form.Email))
+        {
+            SetMessage("Email is required.", false);
+            return;
+        }
+
+        if (Form.Id == 0 &&
+            string.IsNullOrWhiteSpace(Form.Password))
+        {
+            SetMessage("Password is required.", false);
+            return;
+        }
+
+        if (Form.Id == 0 &&
+            Form.Password != Form.ConfirmPassword)
+        {
+            SetMessage(
+                "Password and confirm password do not match.",
+                false);
+
+            return;
+        }
+
+        IsSaving = true;
+
+        if (Form.Id == 0)
+        {
+            var result = await Api.PostAsync<long>(
+                "api/Member",
+                new CreateMemberRequest
+                {
+                    FullName = Form.FullName,
+                    Email = Form.Email,
+                    Password = Form.Password,
+                    ConfirmPassword = Form.ConfirmPassword,
+                    IsActive = Form.IsActive
+                });
+
+            SetMessage(result.Message, result.IsSuccess);
+        }
+        else
+        {
+            var result = await Api.PutAsync<MemberDetailDto>(
+                $"api/Member/{Form.Id}",
+                new UpdateMemberRequest
+                {
+                    FullName = Form.FullName,
+                    Email = Form.Email,
+                    IsActive = Form.IsActive
+                });
+
+            SetMessage(result.Message, result.IsSuccess);
+        }
+
+        IsSaving = false;
+
+        ClearFormOnly();
+
+        await LoadMembersAsync();
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result =
+            await Api.DeleteAsync<bool>($"api/Member/{id}");
+
+        SetMessage(result.Message, result.IsSuccess);
+
+        if (result.IsSuccess)
+        {
+            if (Form.Id == id)
+            {
+                ClearFormOnly();
+            }
+
+            await LoadMembersAsync();
+        }
+    }
+
+    private void ClearFormOnly()
+    {
+        Form = new MemberForm
+        {
+            IsActive = true
+        };
+    }
+
+    private void SetMessage(
+        string? message,
+        bool isSuccess)
+    {
+        Message = message;
+        IsSuccess = isSuccess;
+    }
+
+    private sealed class MemberForm
+    {
+        public long Id { get; set; }
+
+        public string FullName { get; set; } = "";
+
+        public string Email { get; set; } = "";
+
+        public string Password { get; set; } = "";
+
+        public string ConfirmPassword { get; set; } = "";
+
+        public bool IsActive { get; set; } = true;
+    }
+}

@@ -9,6 +9,8 @@ public static class PermissionProvider
     public const string AdminOnly = nameof(AdminOnly);
 
     public const string LibrarianOnly = nameof(LibrarianOnly);
+    public const string LibraryMemberOnly =
+        nameof(LibraryMemberOnly);
 
     public static IServiceCollection AddPermissionPolicies(this IServiceCollection services)
     {
@@ -21,6 +23,11 @@ public static class PermissionProvider
                 policy
                     .RequireAuthenticatedUser()
                     .RequireRole(RoleNames.Librarian));
+            options.AddPolicy(
+                LibraryMemberOnly,
+                policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireRole(RoleNames.LibraryMember));
         });
 
         return services;
