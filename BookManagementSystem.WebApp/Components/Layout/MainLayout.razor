@@ -51,12 +51,17 @@
                             </div>
                         </div>
                         <MudDivider Class="my-1" />
-                        <form method="post" action="/account/logout">
+                        <MudMenuItem Href="/profile"
+                                     Icon="@Icons.Material.Filled.Person"
+                                     Class="pd-action pd-profile">
+                            Profile
+                        </MudMenuItem>
+                        <form method="post" action="/account/logout" class="pd-action-form">
                             <MudButton ButtonType="ButtonType.Submit"
                                        Variant="Variant.Text"
                                        StartIcon="@Icons.Material.Filled.Logout"
-                                       Class="pd-signout">
-                                Sign Out
+                                       Class="pd-action pd-signout">
+                                Logout
                             </MudButton>
                         </form>
                     </ChildContent>
@@ -153,6 +158,7 @@
             "" or "home" => "Dashboard",
             "users" => "Users",
             "roles" => "Roles",
+            "profile" => "Profile",
             "books" => "Books",
             "authors" => "Authors",
             "categories" => "Categories",
