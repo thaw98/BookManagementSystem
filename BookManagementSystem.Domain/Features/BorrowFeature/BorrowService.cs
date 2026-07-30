@@ -27,9 +27,10 @@ public sealed class BorrowService(
             .AsNoTracking()
             .Include(x => x.Role)
             .FirstOrDefaultAsync(
-                x => x.Id == userId &&
-                     x.IsActive &&
-                     x.Role.Name == RoleNames.LibraryMember,
+                x =>
+                    x.Id == userId &&
+                    x.IsActive &&
+                    x.Role.Name == RoleNames.LibraryMember,
                 cancellationToken);
 
         if (member is null)
@@ -57,9 +58,10 @@ public sealed class BorrowService(
 
         var alreadyBorrowed = await db.BookBorrowRecords
             .AnyAsync(
-                x => x.UserId == userId &&
-                     x.BookId == request.BookId &&
-                     x.ReturnedAt == null,
+                x =>
+                    x.UserId == userId &&
+                    x.BookId == request.BookId &&
+                    x.ReturnedAt == null,
                 cancellationToken);
 
         if (alreadyBorrowed)
@@ -70,8 +72,9 @@ public sealed class BorrowService(
 
         var activeBorrowCount = await db.BookBorrowRecords
             .CountAsync(
-                x => x.UserId == userId &&
-                     x.ReturnedAt == null,
+                x =>
+                    x.UserId == userId &&
+                    x.ReturnedAt == null,
                 cancellationToken);
 
         if (activeBorrowCount >= MaxBorrowBooks)
@@ -125,8 +128,9 @@ public sealed class BorrowService(
         var borrowRecord = await db.BookBorrowRecords
             .Include(x => x.Book)
             .FirstOrDefaultAsync(
-                x => x.Id == borrowRecordId &&
-                     x.UserId == userId,
+                x =>
+                    x.Id == borrowRecordId &&
+                    x.UserId == userId,
                 cancellationToken);
 
         if (borrowRecord is null)
@@ -176,8 +180,9 @@ public sealed class BorrowService(
         var records = await db.BookBorrowRecords
             .AsNoTracking()
             .Where(
-                x => x.UserId == userId &&
-                     x.ReturnedAt == null)
+                x =>
+                    x.UserId == userId &&
+                    x.ReturnedAt == null)
             .OrderByDescending(x => x.BorrowedAt)
             .Select(x => new
             {
@@ -267,7 +272,8 @@ public sealed class BorrowService(
             result);
     }
 
-    public async Task<Result<List<BorrowHistoryDto>>>
+    public async Task<
+        Result<OffsetPagedResult<BorrowHistoryDto>>>
         GetBorrowHistoryAsync(
             BorrowFilterRequest request,
             CancellationToken cancellationToken)
@@ -275,6 +281,19 @@ public sealed class BorrowService(
         var query = db.BookBorrowRecords
             .AsNoTracking()
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+
+            query = query.Where(
+                x =>
+                    x.User.FullName.Contains(search) ||
+                    x.User.Email.Contains(search) ||
+                    x.Book.Title.Contains(search) ||
+                    x.Book.Author.Name.Contains(search) ||
+                    x.Book.Category.Name.Contains(search));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.MemberName))
         {
@@ -304,8 +323,9 @@ public sealed class BorrowService(
             request.CategoryId.Value > 0)
         {
             query = query.Where(
-                x => x.Book.CategoryId ==
-                     request.CategoryId.Value);
+                x =>
+                    x.Book.CategoryId ==
+                    request.CategoryId.Value);
         }
 
         if (request.BorrowedFrom.HasValue)
@@ -320,11 +340,14 @@ public sealed class BorrowService(
         if (request.BorrowedTo.HasValue)
         {
             var borrowedToExclusive =
-                request.BorrowedTo.Value.Date.AddDays(1);
+                request.BorrowedTo.Value
+                    .Date
+                    .AddDays(1);
 
             query = query.Where(
-                x => x.BorrowedAt <
-                     borrowedToExclusive);
+                x =>
+                    x.BorrowedAt <
+                    borrowedToExclusive);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Status))
@@ -339,14 +362,16 @@ public sealed class BorrowService(
             {
                 case "borrowed":
                     query = query.Where(
-                        x => x.ReturnedAt == null &&
-                             x.DueAt >= now);
+                        x =>
+                            x.ReturnedAt == null &&
+                            x.DueAt >= now);
                     break;
 
                 case "overdue":
                     query = query.Where(
-                        x => x.ReturnedAt == null &&
-                             x.DueAt < now);
+                        x =>
+                            x.ReturnedAt == null &&
+                            x.DueAt < now);
                     break;
 
                 case "returned":
@@ -355,56 +380,167 @@ public sealed class BorrowService(
                     break;
 
                 default:
-                    return Result<List<BorrowHistoryDto>>
+                    return Result<
+                        OffsetPagedResult<BorrowHistoryDto>>
                         .Validation(
                             "Status must be Borrowed, Overdue, or Returned.");
             }
         }
 
-        var records = await query
-            .OrderByDescending(x => x.BorrowedAt)
-            .Select(x => new
-            {
-                x.Id,
-                x.UserId,
-                MemberName = x.User.FullName,
-                MemberEmail = x.User.Email,
-                x.BookId,
-                BookTitle = x.Book.Title,
-                AuthorName = x.Book.Author.Name,
-                CategoryName = x.Book.Category.Name,
-                x.BorrowedAt,
-                x.DueAt,
-                x.ReturnedAt
-            })
-            .ToListAsync(cancellationToken);
-
-        var result = records
-            .Select(x => new BorrowHistoryDto
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyBorrowHistoryOrdering(
+                source,
+                request),
+            x => new BorrowHistoryDto
             {
                 Id = x.Id,
                 UserId = x.UserId,
-                MemberName = x.MemberName,
-                MemberEmail = x.MemberEmail,
+                MemberName = x.User.FullName,
+                MemberEmail = x.User.Email,
                 BookId = x.BookId,
-                BookTitle = x.BookTitle,
-                AuthorName = x.AuthorName,
-                CategoryName = x.CategoryName,
+                BookTitle = x.Book.Title,
+                AuthorName = x.Book.Author.Name,
+                CategoryName = x.Book.Category.Name,
                 BorrowedAt = x.BorrowedAt,
                 DueAt = x.DueAt,
-                ReturnedAt = x.ReturnedAt,
-                RemainingDays = GetRemainingDays(
-                    x.DueAt,
-                    x.ReturnedAt),
-                Status = GetStatus(
-                    x.DueAt,
-                    x.ReturnedAt)
-            })
-            .ToList();
+                ReturnedAt = x.ReturnedAt
+            },
+            cancellationToken);
 
-        return Result<List<BorrowHistoryDto>>.Success(
-            result);
+        foreach (var item in page.Items)
+        {
+            item.RemainingDays = GetRemainingDays(
+                item.DueAt,
+                item.ReturnedAt);
+
+            item.Status = GetStatus(
+                item.DueAt,
+                item.ReturnedAt);
+        }
+
+        return Result<
+            OffsetPagedResult<BorrowHistoryDto>>
+            .Success(page);
     }
+
+    private static IOrderedQueryable<BookBorrowRecord>
+        ApplyBorrowHistoryOrdering(
+            IQueryable<BookBorrowRecord> query,
+            BorrowFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("memberName", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.User.FullName)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("memberName", false) =>
+                query
+                    .OrderBy(
+                        x => x.User.FullName)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("bookTitle", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.Book.Title)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("bookTitle", false) =>
+                query
+                    .OrderBy(
+                        x => x.Book.Title)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("author", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.Book.Author.Name)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("author", false) =>
+                query
+                    .OrderBy(
+                        x => x.Book.Author.Name)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("category", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.Book.Category.Name)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("category", false) =>
+                query
+                    .OrderBy(
+                        x => x.Book.Category.Name)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("borrowedAt", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("borrowedAt", false) =>
+                query
+                    .OrderBy(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("dueAt", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.DueAt)
+                    .ThenBy(x => x.Id),
+
+            ("dueAt", false) =>
+                query
+                    .OrderBy(
+                        x => x.DueAt)
+                    .ThenBy(x => x.Id),
+
+            ("returnedAt", true) =>
+                query
+                    .OrderByDescending(
+                        x => x.ReturnedAt)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            ("returnedAt", false) =>
+                query
+                    .OrderBy(
+                        x => x.ReturnedAt)
+                    .ThenByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id),
+
+            _ =>
+                query
+                    .OrderByDescending(
+                        x => x.BorrowedAt)
+                    .ThenBy(x => x.Id)
+        };
 
     private static string GetStatus(
         DateTime dueAt,

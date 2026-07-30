@@ -100,10 +100,16 @@
               Breakpoint="Breakpoint.Sm"
               Class="bms-table">
             <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
                 <MudTh><MudTableSortLabel T="AuthorDto" SortLabel="name">Author Name</MudTableSortLabel></MudTh>
                 <MudTh Style="text-align:right">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
                 <MudTd DataLabel="Author Name">@context.Name</MudTd>
                 <MudTd DataLabel="Actions" Style="text-align:right">
                     <MudIconButton id="@EditTriggerId(context.Id)"

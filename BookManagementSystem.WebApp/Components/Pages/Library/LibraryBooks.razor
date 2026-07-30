@@ -1,0 +1,384 @@
+﻿@page "/library"
+@attribute [Authorize(Roles = "Library Member")]
+@inherits ServerPagedComponentBase<BookListDto>
+
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Library — BMS</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Library Books</h1>
+        <p class="page-subtitle">
+            Search the catalog and borrow available books
+        </p>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Error"
+              Class="mb-4"
+              Dense="true">
+        @Message
+    </MudAlert>
+}
+
+<MudPaper Class="bms-panel bms-panel-pad mb-4"
+          Elevation="0">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="TitleFilter"
+                          Label="Search by title"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="AuthorFilter"
+                          Label="Search by author"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudSelect T="long"
+                       @bind-Value="CategoryFilter"
+                       Label="Category"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+                <MudSelectItem T="long" Value="0">
+                    All categories
+                </MudSelectItem>
+
+                @foreach (var category in Categories)
+                {
+                    <MudSelectItem T="long"
+                                   Value="@category.Id">
+                        @category.Name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12"
+                 Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Search"
+                       OnClick="SearchAsync">
+                Search
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       OnClick="ClearFiltersAsync">
+                Clear
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary"
+                       Indeterminate="true"
+                       Class="my-4" />
+}
+
+<MudPaper Class="bms-panel" Elevation="0">
+    <MudTable T="BookListDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+
+        <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
+            <MudTh>
+                <MudTableSortLabel T="BookListDto"
+                                   SortLabel="title">
+                    Title
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BookListDto"
+                                   SortLabel="author">
+                    Author
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BookListDto"
+                                   SortLabel="category">
+                    Category
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BookListDto"
+                                   SortLabel="availableCopies">
+                    Available
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh Style="text-align:right">
+                Action
+            </MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
+            <MudTd DataLabel="Title">
+                @context.Title
+            </MudTd>
+
+            <MudTd DataLabel="Author">
+                @context.AuthorName
+            </MudTd>
+
+            <MudTd DataLabel="Category">
+                @context.CategoryName
+            </MudTd>
+
+            <MudTd DataLabel="Available">
+                @if (context.AvailableCopies > 0)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Success"
+                             Variant="Variant.Outlined">
+                        @context.AvailableCopies available
+                    </MudChip>
+                }
+                else
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Error"
+                             Variant="Variant.Outlined">
+                        Unavailable
+                    </MudChip>
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Action"
+                   Style="text-align:right">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.BookmarkAdd"
+                           Disabled="@IsBorrowDisabled(context)"
+                           OnClick="() => BorrowAsync(context)">
+                    @BorrowButtonText(context)
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">
+                No books found.
+            </MudText>
+        </NoRecordsContent>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private List<CategoryDto> Categories { get; set; } = [];
+
+    private string? TitleFilter { get; set; }
+
+    private string? AuthorFilter { get; set; }
+
+    private long CategoryFilter { get; set; }
+
+    private string? _appliedTitleFilter;
+
+    private string? _appliedAuthorFilter;
+
+    private long _appliedCategoryFilter;
+
+    private long? _borrowingBookId;
+
+    private string? Message { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+    }
+
+    protected override Task<Result<OffsetPagedResult<BookListDto>>>
+        FetchPageAsync(
+            TableState state,
+            CancellationToken cancellationToken)
+    {
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(_appliedTitleFilter))
+        {
+            queryParameters.Add(
+                $"title={Uri.EscapeDataString(_appliedTitleFilter)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_appliedAuthorFilter))
+        {
+            queryParameters.Add(
+                $"author={Uri.EscapeDataString(_appliedAuthorFilter)}");
+        }
+
+        if (_appliedCategoryFilter > 0)
+        {
+            queryParameters.Add(
+                $"categoryId={_appliedCategoryFilter}");
+        }
+
+        AddSortingParameters(queryParameters, state);
+
+        var url =
+            "api/Book/paged?" +
+            string.Join("&", queryParameters);
+
+        return Api.GetAsync<OffsetPagedResult<BookListDto>>(
+            url,
+            cancellationToken);
+    }
+
+    protected override void OnPageLoadSucceeded()
+    {
+        Message = null;
+    }
+
+    protected override void OnPageLoadFailed(string message)
+    {
+        Message = message;
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var result =
+            await Api.GetAsync<List<CategoryDto>>(
+                "api/Category");
+
+        if (result.IsSuccess)
+        {
+            Categories = result.Data ?? [];
+            return;
+        }
+
+        Categories = [];
+        Message = result.Message;
+    }
+
+    private async Task SearchAsync()
+    {
+        _appliedTitleFilter =
+            string.IsNullOrWhiteSpace(TitleFilter)
+                ? null
+                : TitleFilter.Trim();
+
+        _appliedAuthorFilter =
+            string.IsNullOrWhiteSpace(AuthorFilter)
+                ? null
+                : AuthorFilter.Trim();
+
+        _appliedCategoryFilter = CategoryFilter;
+
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        TitleFilter = null;
+        AuthorFilter = null;
+        CategoryFilter = 0;
+
+        _appliedTitleFilter = null;
+        _appliedAuthorFilter = null;
+        _appliedCategoryFilter = 0;
+
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task BorrowAsync(BookListDto book)
+    {
+        if (book.AvailableCopies <= 0 ||
+            _borrowingBookId.HasValue)
+        {
+            return;
+        }
+
+        _borrowingBookId = book.Id;
+        Message = null;
+
+        try
+        {
+            var result =
+                await Api.PostAsync<BorrowResultDto>(
+                    "api/Borrow",
+                    new BorrowBookRequest
+                    {
+                        BookId = book.Id
+                    });
+
+            if (!result.IsSuccess)
+            {
+                Message = result.Message;
+
+                Snackbar.Add(
+                    result.Message ??
+                    "Unable to borrow this book.",
+                    Severity.Error);
+
+                return;
+            }
+
+            Snackbar.Add(
+                result.Message ??
+                $"{book.Title} borrowed successfully.",
+                Severity.Success);
+
+            await ReloadCurrentPageAsync();
+        }
+        finally
+        {
+            _borrowingBookId = null;
+        }
+    }
+
+    private bool IsBorrowDisabled(BookListDto book)
+    {
+        return book.AvailableCopies <= 0 ||
+               _borrowingBookId.HasValue;
+    }
+
+    private string BorrowButtonText(BookListDto book)
+    {
+        if (book.AvailableCopies <= 0)
+        {
+            return "Unavailable";
+        }
+
+        return _borrowingBookId == book.Id
+            ? "Borrowing..."
+            : "Borrow";
+    }
+}

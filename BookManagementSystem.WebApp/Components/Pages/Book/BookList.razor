@@ -203,6 +203,9 @@
               Breakpoint="Breakpoint.Sm"
               Class="bms-table">
             <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
                 <MudTh><MudTableSortLabel T="BookListDto" SortLabel="title">Title</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel T="BookListDto" SortLabel="author">Author</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel T="BookListDto" SortLabel="category">Category</MudTableSortLabel></MudTh>
@@ -211,6 +214,9 @@
                 <MudTh Style="text-align:right">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
                 <MudTd DataLabel="Title">@context.Title</MudTd>
                 <MudTd DataLabel="Author">@context.AuthorName</MudTd>
                 <MudTd DataLabel="Category">@context.CategoryName</MudTd>

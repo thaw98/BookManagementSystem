@@ -1,0 +1,268 @@
+﻿@page "/my-borrowed-books"
+@attribute [Authorize(Roles = "Library Member")]
+
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>My Borrowed Books — BMS</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Borrowed Books</h1>
+        <p class="page-subtitle">
+            View your current loans and return books
+        </p>
+    </div>
+
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               Disabled="@IsLoading"
+               OnClick="LoadBorrowedBooksAsync">
+        Refresh
+    </MudButton>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Error"
+              Class="mb-4"
+              Dense="true">
+        @Message
+    </MudAlert>
+}
+
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary"
+                       Indeterminate="true"
+                       Class="my-4" />
+}
+
+<MudPaper Class="bms-panel"
+          Elevation="0">
+    <MudTable T="ActiveBorrowDto"
+              Items="@BorrowedBooks"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Author</MudTh>
+            <MudTh>Category</MudTh>
+            <MudTh>Borrowed Date</MudTh>
+            <MudTh>Due Date</MudTh>
+            <MudTh>Remaining</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh Style="text-align:right">
+                Action
+            </MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Title">
+                @context.BookTitle
+            </MudTd>
+
+            <MudTd DataLabel="Author">
+                @context.AuthorName
+            </MudTd>
+
+            <MudTd DataLabel="Category">
+                @context.CategoryName
+            </MudTd>
+
+            <MudTd DataLabel="Borrowed Date">
+                @FormatDate(context.BorrowedAt)
+            </MudTd>
+
+            <MudTd DataLabel="Due Date">
+                @FormatDate(context.DueAt)
+            </MudTd>
+
+            <MudTd DataLabel="Remaining">
+                <MudText Color="@RemainingDaysColor(context)">
+                    @RemainingDaysText(context)
+                </MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Outlined"
+                         Color="@StatusColor(context.Status)">
+                    @context.Status
+                </MudChip>
+            </MudTd>
+
+            <MudTd DataLabel="Action"
+                   Style="text-align:right">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.AssignmentReturn"
+                           Disabled="@IsReturnDisabled(context)"
+                           OnClick="() => ReturnBookAsync(context)">
+                    @ReturnButtonText(context)
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">
+                You do not have any borrowed books.
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private List<ActiveBorrowDto> BorrowedBooks { get; set; } = [];
+
+    private bool IsLoading { get; set; }
+
+    private long? _returningBorrowRecordId;
+
+    private string? Message { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBorrowedBooksAsync();
+    }
+
+    private async Task LoadBorrowedBooksAsync()
+    {
+        IsLoading = true;
+        Message = null;
+
+        try
+        {
+            var result =
+                await Api.GetAsync<List<ActiveBorrowDto>>(
+                    "api/Borrow/my-books");
+
+            if (result.IsSuccess)
+            {
+                BorrowedBooks = result.Data ?? [];
+                return;
+            }
+
+            BorrowedBooks = [];
+            Message = result.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task ReturnBookAsync(
+        ActiveBorrowDto borrowRecord)
+    {
+        if (_returningBorrowRecordId.HasValue)
+        {
+            return;
+        }
+
+        _returningBorrowRecordId = borrowRecord.Id;
+        Message = null;
+
+        try
+        {
+            var result =
+                await Api.PutAsync<ReturnResultDto>(
+                    $"api/Borrow/{borrowRecord.Id}/return",
+                    null);
+
+            if (!result.IsSuccess)
+            {
+                Message = result.Message;
+
+                Snackbar.Add(
+    string.IsNullOrWhiteSpace(result.Message)
+        ? "Unable to return this book."
+        : result.Message,
+    Severity.Error);
+
+                return;
+            }
+
+            Snackbar.Add(
+    string.IsNullOrWhiteSpace(result.Message)
+        ? $"{borrowRecord.BookTitle} returned successfully."
+        : result.Message,
+    Severity.Success);
+
+            await LoadBorrowedBooksAsync();
+        }
+        finally
+        {
+            _returningBorrowRecordId = null;
+        }
+    }
+
+    private bool IsReturnDisabled(
+        ActiveBorrowDto borrowRecord)
+    {
+        return _returningBorrowRecordId.HasValue;
+    }
+
+    private string ReturnButtonText(
+        ActiveBorrowDto borrowRecord)
+    {
+        return _returningBorrowRecordId == borrowRecord.Id
+            ? "Returning..."
+            : "Return";
+    }
+
+    private static string FormatDate(DateTime date)
+    {
+        return date.ToLocalTime()
+            .ToString("dd-MMM-yyyy");
+    }
+
+    private static string RemainingDaysText(
+        ActiveBorrowDto borrowRecord)
+    {
+        if (borrowRecord.RemainingDays < 0)
+        {
+            return $"{Math.Abs(borrowRecord.RemainingDays)} day(s) overdue";
+        }
+
+        if (borrowRecord.RemainingDays == 0)
+        {
+            return "Due today";
+        }
+
+        return $"{borrowRecord.RemainingDays} day(s)";
+    }
+
+    private static Color RemainingDaysColor(
+        ActiveBorrowDto borrowRecord)
+    {
+        if (borrowRecord.RemainingDays < 0)
+        {
+            return Color.Error;
+        }
+
+        if (borrowRecord.RemainingDays <= 1)
+        {
+            return Color.Warning;
+        }
+
+        return Color.Default;
+    }
+
+    private static Color StatusColor(string status)
+    {
+        return status.ToLowerInvariant() switch
+        {
+            "borrowed" => Color.Success,
+            "overdue" => Color.Error,
+            "returned" => Color.Default,
+            _ => Color.Info
+        };
+    }
+}
