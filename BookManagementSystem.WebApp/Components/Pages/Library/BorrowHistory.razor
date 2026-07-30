@@ -1,0 +1,553 @@
+﻿@page "/borrow-history"
+@attribute [Authorize(Roles = "Librarian")]
+@inherits ServerPagedComponentBase<BorrowHistoryDto>
+
+@inject ApiClient Api
+
+<PageTitle>Borrow History — BMS</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Borrow History</h1>
+        <p class="page-subtitle">
+            View and filter all member borrowing records
+        </p>
+    </div>
+
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               Disabled="@IsLoading"
+               OnClick="RefreshAsync">
+        Refresh
+    </MudButton>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Error"
+              Class="mb-4"
+              Dense="true">
+        @Message
+    </MudAlert>
+}
+
+<MudPaper Class="bms-panel bms-panel-pad mb-4"
+          Elevation="0">
+
+    <MudGrid Spacing="2">
+
+        <MudItem xs="12" md="3">
+            <MudTextField @bind-Value="MemberNameFilter"
+                          Label="Member name"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true" />
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudTextField @bind-Value="BookTitleFilter"
+                          Label="Book title"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true" />
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudTextField @bind-Value="AuthorFilter"
+                          Label="Author"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true" />
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudSelect T="long"
+                       @bind-Value="CategoryFilter"
+                       Label="Category"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+
+                <MudSelectItem T="long" Value="0">
+                    All categories
+                </MudSelectItem>
+
+                @foreach (var category in Categories)
+                {
+                    <MudSelectItem T="long"
+                                   Value="@category.Id">
+                        @category.Name
+                    </MudSelectItem>
+                }
+
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudSelect T="string"
+                       @bind-Value="StatusFilter"
+                       Label="Status"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+
+                <MudSelectItem T="string"
+                               Value="@AllStatus">
+                    All statuses
+                </MudSelectItem>
+
+                <MudSelectItem T="string"
+                               Value="@BorrowedStatus">
+                    Borrowed
+                </MudSelectItem>
+
+                <MudSelectItem T="string"
+                               Value="@OverdueStatus">
+                    Overdue
+                </MudSelectItem>
+
+                <MudSelectItem T="string"
+                               Value="@ReturnedStatus">
+                    Returned
+                </MudSelectItem>
+
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudDatePicker @bind-Date="BorrowedFromFilter"
+                           Label="From date"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           DateFormat="yyyy-MM-dd"
+                           Clearable="true" />
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudDatePicker @bind-Date="BorrowedToFilter"
+                           Label="To date"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           DateFormat="yyyy-MM-dd"
+                           Clearable="true" />
+        </MudItem>
+
+        <MudItem xs="12"
+                 Class="d-flex align-center gap-2">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Search"
+                       Disabled="@IsLoading"
+                       OnClick="SearchAsync">
+                Search
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       Disabled="@IsLoading"
+                       OnClick="ClearFiltersAsync">
+                Clear
+            </MudButton>
+
+        </MudItem>
+
+    </MudGrid>
+</MudPaper>
+
+@if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary"
+                       Indeterminate="true"
+                       Class="my-4" />
+}
+
+<MudPaper Class="bms-panel"
+          Elevation="0">
+
+    <MudTable T="BorrowHistoryDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              RowsPerPage="10"
+              Class="bms-table">
+
+        <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="memberName">
+                    Member
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                Email
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="bookTitle">
+                    Book
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="author">
+                    Author
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="category">
+                    Category
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="borrowedAt">
+                    Borrowed
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="dueAt">
+                    Due Date
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="BorrowHistoryDto"
+                                   SortLabel="returnedAt">
+                    Returned
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                Status
+            </MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
+
+            <MudTd DataLabel="Member">
+                @context.MemberName
+            </MudTd>
+
+            <MudTd DataLabel="Email">
+                @context.MemberEmail
+            </MudTd>
+
+            <MudTd DataLabel="Book">
+                @context.BookTitle
+            </MudTd>
+
+            <MudTd DataLabel="Author">
+                @context.AuthorName
+            </MudTd>
+
+            <MudTd DataLabel="Category">
+                @context.CategoryName
+            </MudTd>
+
+            <MudTd DataLabel="Borrowed">
+                @FormatDate(context.BorrowedAt)
+            </MudTd>
+
+            <MudTd DataLabel="Due Date">
+                @FormatDate(context.DueAt)
+            </MudTd>
+
+            <MudTd DataLabel="Returned">
+                @FormatNullableDate(context.ReturnedAt)
+            </MudTd>
+
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Outlined"
+                         Color="@StatusColor(context.Status)">
+                    @context.Status
+                </MudChip>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">
+                No borrow history found.
+            </MudText>
+        </NoRecordsContent>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+        </PagerContent>
+
+    </MudTable>
+</MudPaper>
+
+@code {
+    private const string AllStatus = "";
+
+    private const string BorrowedStatus =
+        "Borrowed";
+
+    private const string OverdueStatus =
+        "Overdue";
+
+    private const string ReturnedStatus =
+        "Returned";
+
+    private List<CategoryDto> Categories { get; set; } = [];
+
+    private string? MemberNameFilter { get; set; }
+
+    private string? BookTitleFilter { get; set; }
+
+    private string? AuthorFilter { get; set; }
+
+    private long CategoryFilter { get; set; }
+
+    private string StatusFilter { get; set; } =
+        AllStatus;
+
+    private DateTime? BorrowedFromFilter { get; set; }
+
+    private DateTime? BorrowedToFilter { get; set; }
+
+    private string? _appliedMemberNameFilter;
+
+    private string? _appliedBookTitleFilter;
+
+    private string? _appliedAuthorFilter;
+
+    private long _appliedCategoryFilter;
+
+    private string _appliedStatusFilter =
+        AllStatus;
+
+    private DateTime? _appliedBorrowedFromFilter;
+
+    private DateTime? _appliedBorrowedToFilter;
+
+    private string? Message { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+    }
+
+    protected override Task<
+        Result<OffsetPagedResult<BorrowHistoryDto>>>
+        FetchPageAsync(
+            TableState state,
+            CancellationToken cancellationToken)
+    {
+        var request =
+            new BorrowFilterRequest
+            {
+                Page =
+                    state.Page + 1,
+
+                PageSize =
+                    state.PageSize,
+
+                MemberName =
+                    _appliedMemberNameFilter,
+
+                BookTitle =
+                    _appliedBookTitleFilter,
+
+                Author =
+                    _appliedAuthorFilter,
+
+                CategoryId =
+                    _appliedCategoryFilter > 0
+                        ? _appliedCategoryFilter
+                        : null,
+
+                Status =
+                    string.IsNullOrWhiteSpace(
+                        _appliedStatusFilter)
+                        ? null
+                        : _appliedStatusFilter,
+
+                BorrowedFrom =
+                    _appliedBorrowedFromFilter?.Date,
+
+                BorrowedTo =
+                    _appliedBorrowedToFilter?.Date,
+
+                SortBy =
+                    string.IsNullOrWhiteSpace(
+                        state.SortLabel)
+                        ? null
+                        : state.SortLabel,
+
+                SortDescending =
+                    state.SortDirection ==
+                    SortDirection.Descending
+            };
+
+        return Api.PostAsync<
+            OffsetPagedResult<BorrowHistoryDto>>(
+                "api/Borrow/history",
+                request,
+                cancellationToken);
+    }
+
+    protected override void OnPageLoadSucceeded()
+    {
+        Message = null;
+    }
+
+    protected override void OnPageLoadFailed(
+        string message)
+    {
+        Message = message;
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var result =
+            await Api.GetAsync<List<CategoryDto>>(
+                "api/Category");
+
+        if (result.IsSuccess)
+        {
+            Categories =
+                result.Data ?? [];
+
+            return;
+        }
+
+        Categories = [];
+        Message = result.Message;
+    }
+
+    private async Task SearchAsync()
+    {
+        if (!ValidateDateRange())
+            return;
+
+        _appliedMemberNameFilter =
+            NormalizeFilter(MemberNameFilter);
+
+        _appliedBookTitleFilter =
+            NormalizeFilter(BookTitleFilter);
+
+        _appliedAuthorFilter =
+            NormalizeFilter(AuthorFilter);
+
+        _appliedCategoryFilter =
+            CategoryFilter;
+
+        _appliedStatusFilter =
+            StatusFilter;
+
+        _appliedBorrowedFromFilter =
+            BorrowedFromFilter?.Date;
+
+        _appliedBorrowedToFilter =
+            BorrowedToFilter?.Date;
+
+        Message = null;
+
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        MemberNameFilter = null;
+        BookTitleFilter = null;
+        AuthorFilter = null;
+        CategoryFilter = 0;
+        StatusFilter = AllStatus;
+        BorrowedFromFilter = null;
+        BorrowedToFilter = null;
+
+        _appliedMemberNameFilter = null;
+        _appliedBookTitleFilter = null;
+        _appliedAuthorFilter = null;
+        _appliedCategoryFilter = 0;
+        _appliedStatusFilter = AllStatus;
+        _appliedBorrowedFromFilter = null;
+        _appliedBorrowedToFilter = null;
+
+        Message = null;
+
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        Message = null;
+
+        await ReloadCurrentPageAsync();
+    }
+
+    private bool ValidateDateRange()
+    {
+        if (BorrowedFromFilter.HasValue &&
+            BorrowedToFilter.HasValue &&
+            BorrowedFromFilter.Value.Date >
+            BorrowedToFilter.Value.Date)
+        {
+            Message =
+                "From date cannot be later than to date.";
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string? NormalizeFilter(
+        string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
+    }
+
+    private static string FormatDate(
+        DateTime date)
+    {
+        return date
+            .ToLocalTime()
+            .ToString("dd-MMM-yyyy");
+    }
+
+    private static string FormatNullableDate(
+        DateTime? date)
+    {
+        return date.HasValue
+            ? date.Value
+                .ToLocalTime()
+                .ToString("dd-MMM-yyyy")
+            : "-";
+    }
+
+    private static Color StatusColor(
+        string status)
+    {
+        return status
+            .ToLowerInvariant() switch
+        {
+            "borrowed" => Color.Success,
+            "overdue" => Color.Error,
+            "returned" => Color.Default,
+            _ => Color.Info
+        };
+    }
+}

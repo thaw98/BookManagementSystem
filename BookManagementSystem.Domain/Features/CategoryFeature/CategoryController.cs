@@ -6,16 +6,17 @@ using Shared.Base;
 
 namespace BookManagementSystem.Domain.Features.CategoryFeature;
 
-[Authorize(Policy = PermissionProvider.LibrarianOnly)]
 public sealed class CategoryController(
     ICategoryService categoryService) : BaseController
 {
+    [Authorize(Policy = PermissionProvider.CatalogRead)]
     [HttpGet]
     public async Task<IActionResult> GetAll(
         CancellationToken cancellationToken) =>
         Execute(await categoryService.GetAllAsync(
             cancellationToken));
 
+    [Authorize(Policy = PermissionProvider.CatalogRead)]
     [HttpGet("paged")]
     public async Task<IActionResult> GetPaged(
         [FromQuery] CategoryFilterRequest request,
@@ -24,6 +25,7 @@ public sealed class CategoryController(
             request,
             cancellationToken));
 
+    [Authorize(Policy = PermissionProvider.CatalogRead)]
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById(
         long id,
@@ -32,6 +34,7 @@ public sealed class CategoryController(
             id,
             cancellationToken));
 
+    [Authorize(Policy = PermissionProvider.LibrarianOnly)]
     [HttpPost]
     public async Task<IActionResult> Create(
         CreateCategoryRequest request,
@@ -40,6 +43,7 @@ public sealed class CategoryController(
             request,
             cancellationToken));
 
+    [Authorize(Policy = PermissionProvider.LibrarianOnly)]
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(
         long id,
@@ -50,6 +54,7 @@ public sealed class CategoryController(
             request,
             cancellationToken));
 
+    [Authorize(Policy = PermissionProvider.LibrarianOnly)]
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(
         long id,

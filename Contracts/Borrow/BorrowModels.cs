@@ -1,4 +1,6 @@
-﻿namespace Contracts.Borrow;
+﻿using Shared.Models;
+
+namespace Contracts.Borrow;
 
 public sealed class BorrowBookRequest
 {
@@ -37,7 +39,8 @@ public sealed class BorrowHistoryDto : ActiveBorrowDto
     public DateTime? ReturnedAt { get; set; }
 }
 
-public sealed class BorrowFilterRequest
+public record class BorrowFilterRequest
+    : OffsetPagedRequest
 {
     public string? MemberName { get; set; }
 

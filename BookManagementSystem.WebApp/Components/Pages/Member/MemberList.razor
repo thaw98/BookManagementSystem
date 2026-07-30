@@ -1,346 +1,639 @@
 ﻿@page "/members"
 @attribute [Authorize(Roles = "Librarian")]
+@inherits ServerPagedComponentBase<MemberListDto>
+
 @inject ApiClient Api
+@inject ISnackbar Snackbar
 
-<PageTitle>Library Members</PageTitle>
+<PageTitle>Library Members — BMS</PageTitle>
 
-<h1>Library Members</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Library Members</h1>
+        <p class="page-subtitle">
+            Create, search and manage library member accounts
+        </p>
+    </div>
+
+    <MudButton id="@AddTriggerId"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenCreateDialog">
+        Add Member
+    </MudButton>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
-    <div class="alert @(IsSuccess ? "alert-success" : "alert-danger")">
+    <MudAlert Severity="@(IsSuccess ? Severity.Success : Severity.Error)"
+              Class="mb-4"
+              Dense="true">
         @Message
-    </div>
+    </MudAlert>
 }
 
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input class="form-control"
-               placeholder="Search by member name"
-               @bind="NameFilter"
-               @bind:event="oninput" />
-    </div>
+<CreateEntityDialog TModel="MemberForm"
+                    @bind-IsOpen="_createDialogOpen"
+                    Model="@_createForm"
+                    EntityLabel="Library Member"
+                    SupportingText="Create a new library member account."
+                    DialogWidth="MaxWidth.Medium"
+                    Submit="CreateMemberAsync"
+                    OnSuccess="OnMemberCreatedAsync"
+                    ReturnFocusElementId="@AddTriggerId">
 
-    <div class="col-md-4">
-        <input class="form-control"
-               placeholder="Search by email"
-               @bind="EmailFilter"
-               @bind:event="oninput" />
-    </div>
+    <FormFields Context="model">
+        <MudGrid Spacing="2"
+                 Class="bms-dialog-grid">
 
-    <div class="col-md-2">
-        <select class="form-select" @bind="StatusFilter">
-            <option value="">All status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-        </select>
-    </div>
-</div>
+            <MudItem xs="12"
+                     sm="6">
+                <MudTextField @bind-Value="model.FullName"
+                              For="@(() => model.FullName)"
+                              Label="Full name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              Counter="150"
+                              MaxLength="150"
+                              AutoFocus="true" />
+            </MudItem>
 
-<EditForm Model="Form"
-          OnValidSubmit="SaveAsync"
-          class="row g-2 mb-4">
+            <MudItem xs="12"
+                     sm="6">
+                <MudTextField @bind-Value="model.Email"
+                              For="@(() => model.Email)"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Email"
+                              Required="true"
+                              Immediate="true"
+                              Counter="200"
+                              MaxLength="200" />
+            </MudItem>
 
-    <DataAnnotationsValidator />
+            <MudItem xs="12"
+                     sm="6">
+                <MudTextField @bind-Value="model.Password"
+                              For="@(() => model.Password)"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              Immediate="true" />
+            </MudItem>
 
-    <div class="col-md-3">
-        <InputText class="form-control"
-                   placeholder="Full name"
-                   @bind-Value="Form.FullName" />
-    </div>
+            <MudItem xs="12"
+                     sm="6">
+                <MudTextField @bind-Value="model.ConfirmPassword"
+                              For="@(() => model.ConfirmPassword)"
+                              Label="Confirm password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              Immediate="true" />
+            </MudItem>
 
-    <div class="col-md-3">
-        <InputText class="form-control"
-                   placeholder="Email"
-                   @bind-Value="Form.Email" />
-    </div>
+            <MudItem xs="12">
+                <MudCheckBox T="bool"
+                             @bind-Value="model.IsActive"
+                             Label="Active member"
+                             Color="Color.Primary" />
+            </MudItem>
 
-    @if (Form.Id == 0)
-    {
-        <div class="col-md-2">
-            <InputText class="form-control"
-                       type="password"
-                       placeholder="Password"
-                       @bind-Value="Form.Password" />
-        </div>
+        </MudGrid>
+    </FormFields>
+</CreateEntityDialog>
 
-        <div class="col-md-2">
-            <InputText class="form-control"
-                       type="password"
-                       placeholder="Confirm password"
-                       @bind-Value="Form.ConfirmPassword" />
-        </div>
-    }
+<EditEntityDialog TModel="MemberForm"
+                  @bind-IsOpen="_editDialogOpen"
+                  Model="@_editForm"
+                  EntityLabel="Library Member"
+                  SupportingText="Update member details and account status."
+                  DialogWidth="MaxWidth.Medium"
+                  Submit="UpdateMemberAsync"
+                  OnSuccess="OnMemberUpdatedAsync"
+                  ReturnFocusElementId="@_editReturnFocusId">
 
-    <div class="col-md-2 form-check pt-2">
-        <InputCheckbox class="form-check-input"
-                       @bind-Value="Form.IsActive" />
+    <FormFields Context="model">
+        <MudGrid Spacing="2"
+                 Class="bms-dialog-grid">
 
-        <label class="form-check-label">
-            Active
-        </label>
-    </div>
+            <MudItem xs="12"
+                     sm="6">
+                <MudTextField @bind-Value="model.FullName"
+                              For="@(() => model.FullName)"
+                              Label="Full name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              Counter="150"
+                              MaxLength="150"
+                              AutoFocus="true" />
+            </MudItem>
 
-    <div class="col-md-3">
-        <button class="btn btn-primary"
-                type="submit"
-                disabled="@IsSaving">
-            @(Form.Id == 0 ? "Create" : "Update")
-        </button>
+            <MudItem xs="12"
+                     sm="6">
+                <MudTextField @bind-Value="model.Email"
+                              For="@(() => model.Email)"
+                              Label="Email"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Email"
+                              Required="true"
+                              Immediate="true"
+                              Counter="200"
+                              MaxLength="200" />
+            </MudItem>
 
-        <button class="btn btn-outline-secondary"
-                type="button"
-                @onclick="Clear">
-            Clear
-        </button>
-    </div>
-</EditForm>
+            <MudItem xs="12">
+                <MudCheckBox T="bool"
+                             @bind-Value="model.IsActive"
+                             Label="Active member"
+                             Color="Color.Primary" />
+            </MudItem>
+
+        </MudGrid>
+    </FormFields>
+</EditEntityDialog>
+
+<MudPaper Class="bms-panel bms-panel-pad mb-4"
+          Elevation="0">
+
+    <MudGrid Spacing="2">
+
+        <MudItem xs="12"
+                 md="4">
+            <MudTextField @bind-Value="NameFilter"
+                          Label="Search by member name"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+
+        <MudItem xs="12"
+                 md="4">
+            <MudTextField @bind-Value="EmailFilter"
+                          Label="Search by email"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Email" />
+        </MudItem>
+
+        <MudItem xs="12"
+                 md="2">
+            <MudSelect T="string"
+                       @bind-Value="StatusFilter"
+                       Label="Status"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+
+                <MudSelectItem T="string"
+                               Value="@AllStatus">
+                    All statuses
+                </MudSelectItem>
+
+                <MudSelectItem T="string"
+                               Value="@ActiveStatus">
+                    Active
+                </MudSelectItem>
+
+                <MudSelectItem T="string"
+                               Value="@InactiveStatus">
+                    Inactive
+                </MudSelectItem>
+
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12"
+                 md="2"
+                 Class="d-flex align-center gap-2">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="SearchAsync">
+                Search
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       OnClick="ClearFiltersAsync">
+                Clear
+            </MudButton>
+
+        </MudItem>
+
+    </MudGrid>
+</MudPaper>
 
 @if (IsLoading)
 {
-    <p>Loading members...</p>
+    <MudProgressLinear Color="Color.Primary"
+                       Indeterminate="true"
+                       Class="my-4" />
 }
-else if (FilteredMembers.Any())
-{
-    <table class="table table-sm table-hover align-middle">
-        <thead>
-            <tr>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Active</th>
-                <th>Created At</th>
-                <th></th>
-            </tr>
-        </thead>
 
-        <tbody>
-            @foreach (var member in FilteredMembers)
-            {
-                <tr>
-                    <td>@member.FullName</td>
-                    <td>@member.Email</td>
-                    <td>
-                        @if (member.IsActive)
-                        {
-                            <span class="badge bg-success">
-                                Active
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">
-                                Inactive
-                            </span>
-                        }
-                    </td>
-                    <td>
-                        @member.CreatedAt.ToString("yyyy-MM-dd")
-                    </td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => Edit(member)">
-                            Edit
-                        </button>
+<MudPaper Class="bms-panel"
+          Elevation="0">
 
-                        <DeleteIconButton DisplayName="@member.FullName"
-                                          OnDelete="() => DeleteAsync(member.Id, member.FullName)" />
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <div class="alert alert-secondary">
-        No library members found.
-    </div>
-}
+    <MudTable T="MemberListDto"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
+              RowsPerPage="10"
+              Hover="true"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              Class="bms-table">
+
+        <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="fullName">
+                    Full Name
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="email">
+                    Email
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="isActive">
+                    Status
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="createdAt">
+                    Created At
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh Style="text-align:right">
+                Actions
+            </MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
+
+            <MudTd DataLabel="Full Name">
+                <div class="d-flex align-center gap-2">
+                    <MudAvatar Size="Size.Small"
+                               Color="Color.Primary">
+                        @GetInitial(context.FullName)
+                    </MudAvatar>
+
+                    <MudText Typo="Typo.body2">
+                        @context.FullName
+                    </MudText>
+                </div>
+            </MudTd>
+
+            <MudTd DataLabel="Email">
+                @context.Email
+            </MudTd>
+
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Outlined"
+                         Color="@(context.IsActive
+                                                               ? Color.Success
+                                                               : Color.Default)">
+                    @(context.IsActive
+                        ? "Active"
+                        : "Inactive")
+                </MudChip>
+            </MudTd>
+
+            <MudTd DataLabel="Created At">
+                @(context.CreatedAt
+                    .ToLocalTime()
+                    .ToString("dd-MMM-yyyy"))
+            </MudTd>
+
+            <MudTd DataLabel="Actions"
+                   Style="text-align:right">
+
+                <MudIconButton id="@EditTriggerId(context.Id)"
+                               Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="() => OpenEditDialog(context)"
+                               aria-label="@($"Edit {context.FullName}")" />
+
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="() => DeleteAsync(context.Id)"
+                               aria-label="@($"Delete {context.FullName}")" />
+
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Class="pa-4 mud-text-secondary">
+                No library members found.
+            </MudText>
+        </NoRecordsContent>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@(new[] { 10, 25, 50 })" />
+        </PagerContent>
+
+    </MudTable>
+</MudPaper>
 
 @code {
-    private List<MemberListDto> Members { get; set; } = [];
+    private const string AddTriggerId =
+        "add-member-trigger";
 
-    private MemberForm Form { get; set; } = new();
+    private const string AllStatus = "";
+
+    private const string ActiveStatus =
+        "active";
+
+    private const string InactiveStatus =
+        "inactive";
+
+    private MemberForm _createForm =
+        new()
+        {
+            IsActive = true
+        };
+
+    private MemberForm _editForm =
+        new();
+
+    private bool _createDialogOpen;
+
+    private bool _editDialogOpen;
+
+    private string? _editReturnFocusId;
 
     private string? NameFilter { get; set; }
 
     private string? EmailFilter { get; set; }
 
-    private string? StatusFilter { get; set; }
+    private string StatusFilter { get; set; } =
+        AllStatus;
 
-    private string? Message { get; set; }
+    private string? _appliedNameFilter;
+
+    private string? _appliedEmailFilter;
+
+    private string _appliedStatusFilter =
+        AllStatus;
 
     private bool IsSuccess { get; set; }
 
-    private bool IsLoading { get; set; }
+    private string? Message { get; set; }
 
-    private bool IsSaving { get; set; }
-
-    private IEnumerable<MemberListDto> FilteredMembers =>
-        Members.Where(member =>
-            (string.IsNullOrWhiteSpace(NameFilter) ||
-             member.FullName.Contains(
-                 NameFilter,
-                 StringComparison.OrdinalIgnoreCase))
-            &&
-            (string.IsNullOrWhiteSpace(EmailFilter) ||
-             member.Email.Contains(
-                 EmailFilter,
-                 StringComparison.OrdinalIgnoreCase))
-            &&
-            (string.IsNullOrWhiteSpace(StatusFilter) ||
-             StatusFilter == "active" && member.IsActive ||
-             StatusFilter == "inactive" && !member.IsActive));
-
-    protected override async Task OnInitializedAsync()
+    protected override Task<Result<OffsetPagedResult<MemberListDto>>>
+        FetchPageAsync(
+            TableState state,
+            CancellationToken cancellationToken)
     {
-        await LoadMembersAsync();
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(_appliedNameFilter))
+        {
+            queryParameters.Add(
+                $"name={Uri.EscapeDataString(_appliedNameFilter)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_appliedEmailFilter))
+        {
+            queryParameters.Add(
+                $"email={Uri.EscapeDataString(_appliedEmailFilter)}");
+        }
+
+        if (_appliedStatusFilter == ActiveStatus)
+        {
+            queryParameters.Add("isActive=true");
+        }
+        else if (_appliedStatusFilter == InactiveStatus)
+        {
+            queryParameters.Add("isActive=false");
+        }
+
+        AddSortingParameters(
+            queryParameters,
+            state);
+
+        return Api.GetAsync<OffsetPagedResult<MemberListDto>>(
+            "api/Member/paged?" +
+            string.Join("&", queryParameters),
+            cancellationToken);
     }
 
-    private async Task<bool> LoadMembersAsync()
+    protected override void OnPageLoadSucceeded()
     {
-        IsLoading = true;
+        Message = null;
+    }
+
+    protected override void OnPageLoadFailed(
+        string message)
+    {
+        SetMessage(message, false);
+    }
+
+    private async Task SearchAsync()
+    {
+        _appliedNameFilter =
+            string.IsNullOrWhiteSpace(NameFilter)
+                ? null
+                : NameFilter.Trim();
+
+        _appliedEmailFilter =
+            string.IsNullOrWhiteSpace(EmailFilter)
+                ? null
+                : EmailFilter.Trim();
+
+        _appliedStatusFilter = StatusFilter;
+
+        Message = null;
+
+        await ReloadFromFirstPageAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        NameFilter = null;
+        EmailFilter = null;
+        StatusFilter = AllStatus;
+
+        _appliedNameFilter = null;
+        _appliedEmailFilter = null;
+        _appliedStatusFilter = AllStatus;
+
+        Message = null;
+
+        await ReloadFromFirstPageAsync();
+    }
+
+    private void OpenCreateDialog()
+    {
+        _createForm =
+            new MemberForm
+            {
+                IsActive = true
+            };
+
+        Message = null;
+        _createDialogOpen = true;
+    }
+
+    private void OpenEditDialog(
+        MemberListDto member)
+    {
+        _editForm =
+            new MemberForm
+            {
+                Id = member.Id,
+                FullName = member.FullName,
+                Email = member.Email,
+                IsActive = member.IsActive
+            };
+
+        _editReturnFocusId =
+            EditTriggerId(member.Id);
+
+        Message = null;
+        _editDialogOpen = true;
+    }
+
+    private async Task<FormSubmitResult>
+        CreateMemberAsync(MemberForm form)
+    {
+        if (form.Password !=
+            form.ConfirmPassword)
+        {
+            return new FormSubmitResult(
+                false,
+                "Password and confirm password do not match.");
+        }
 
         var result =
-            await Api.GetAsync<List<MemberListDto>>("api/Member");
-
-        Members = result.Data ?? [];
-
-        if (!result.IsSuccess)
-        {
-            SetMessage(result.Message, false);
-        }
-
-        IsLoading = false;
-        return result.IsSuccess;
-    }
-
-    private void Edit(MemberListDto member)
-    {
-        Form = new MemberForm
-        {
-            Id = member.Id,
-            FullName = member.FullName,
-            Email = member.Email,
-            IsActive = member.IsActive
-        };
-
-        Message = null;
-    }
-
-    private void Clear()
-    {
-        Form = new MemberForm
-        {
-            IsActive = true
-        };
-
-        Message = null;
-    }
-
-    private async Task SaveAsync()
-    {
-        if (string.IsNullOrWhiteSpace(Form.FullName))
-        {
-            SetMessage("Full name is required.", false);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(Form.Email))
-        {
-            SetMessage("Email is required.", false);
-            return;
-        }
-
-        if (Form.Id == 0 &&
-            string.IsNullOrWhiteSpace(Form.Password))
-        {
-            SetMessage("Password is required.", false);
-            return;
-        }
-
-        if (Form.Id == 0 &&
-            Form.Password != Form.ConfirmPassword)
-        {
-            SetMessage(
-                "Password and confirm password do not match.",
-                false);
-
-            return;
-        }
-
-        IsSaving = true;
-
-        if (Form.Id == 0)
-        {
-            var result = await Api.PostAsync<long>(
+            await Api.PostAsync<long>(
                 "api/Member",
                 new CreateMemberRequest
                 {
-                    FullName = Form.FullName,
-                    Email = Form.Email,
-                    Password = Form.Password,
-                    ConfirmPassword = Form.ConfirmPassword,
-                    IsActive = Form.IsActive
+                    FullName =
+                        form.FullName.Trim(),
+
+                    Email =
+                        form.Email.Trim(),
+
+                    Password =
+                        form.Password,
+
+                    ConfirmPassword =
+                        form.ConfirmPassword,
+
+                    IsActive =
+                        form.IsActive
                 });
 
-            SetMessage(result.Message, result.IsSuccess);
-        }
-        else
-        {
-            var result = await Api.PutAsync<MemberDetailDto>(
-                $"api/Member/{Form.Id}",
-                new UpdateMemberRequest
-                {
-                    FullName = Form.FullName,
-                    Email = Form.Email,
-                    IsActive = Form.IsActive
-                });
-
-            SetMessage(result.Message, result.IsSuccess);
-        }
-
-        IsSaving = false;
-
-        ClearFormOnly();
-
-        await LoadMembersAsync();
+        return new FormSubmitResult(
+            result.IsSuccess,
+            result.Message);
     }
 
-    private async Task DeleteAsync(long id, string fullName)
+    private async Task<FormSubmitResult>
+        UpdateMemberAsync(MemberForm form)
     {
         var result =
-            await Api.DeleteAsync<bool>($"api/Member/{id}");
+            await Api.PutAsync<MemberDetailDto>(
+                $"api/Member/{form.Id}",
+                new UpdateMemberRequest
+                {
+                    FullName =
+                        form.FullName.Trim(),
 
-        if (!result.IsSuccess)
-        {
-            SetMessage(result.Message, false);
-            return;
-        }
+                    Email =
+                        form.Email.Trim(),
 
-        if (Form.Id == id)
-        {
-            ClearFormOnly();
-        }
+                    IsActive =
+                        form.IsActive
+                });
 
-        if (!await LoadMembersAsync())
-            return;
-
-        var message =
-            string.IsNullOrWhiteSpace(result.Message) ||
-            string.Equals(result.Message, "Success", StringComparison.OrdinalIgnoreCase)
-                ? $"Library member “{fullName}” deleted."
-                : result.Message;
-
-        SetMessage(message, true);
+        return new FormSubmitResult(
+            result.IsSuccess,
+            result.Message);
     }
 
-    private void ClearFormOnly()
+    private async Task OnMemberCreatedAsync(
+        FormSubmitResult result)
     {
-        Form = new MemberForm
+        Message = null;
+
+        await ReloadFromFirstPageAsync();
+
+        Snackbar.Add(
+            string.IsNullOrWhiteSpace(result.Message)
+                ? "Library member created successfully."
+                : result.Message,
+            Severity.Success);
+    }
+
+    private async Task OnMemberUpdatedAsync(
+        FormSubmitResult result)
+    {
+        Message = null;
+
+        await ReloadCurrentPageAsync();
+
+        Snackbar.Add(
+            string.IsNullOrWhiteSpace(result.Message)
+                ? "Library member updated successfully."
+                : result.Message,
+            Severity.Success);
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        var result =
+            await Api.DeleteAsync<bool>(
+                $"api/Member/{id}");
+
+        if (result.IsSuccess)
         {
-            IsActive = true
-        };
+            await ReloadAfterDeleteAsync();
+
+            Snackbar.Add(
+                string.IsNullOrWhiteSpace(result.Message)
+                    ? "Library member deleted successfully."
+                    : result.Message,
+                Severity.Success);
+
+            return;
+        }
+
+        SetMessage(
+            result.Message,
+            false);
     }
 
     private void SetMessage(
@@ -351,18 +644,66 @@ else
         IsSuccess = isSuccess;
     }
 
+    private static string EditTriggerId(long id)
+    {
+        return $"edit-member-{id}";
+    }
+
+    private static string GetInitial(
+        string fullName)
+    {
+        return string.IsNullOrWhiteSpace(fullName)
+            ? "M"
+            : fullName
+                .Trim()[0]
+                .ToString()
+                .ToUpperInvariant();
+    }
+
     private sealed class MemberForm
     {
         public long Id { get; set; }
 
-        public string FullName { get; set; } = "";
+        [Required(
+            ErrorMessage =
+                "Full name is required.")]
+        [MaxLength(
+            150,
+            ErrorMessage =
+                "Full name cannot exceed 150 characters.")]
+        public string FullName { get; set; } =
+            "";
 
-        public string Email { get; set; } = "";
+        [Required(
+            ErrorMessage =
+                "Email is required.")]
+        [EmailAddress(
+            ErrorMessage =
+                "Enter a valid email address.")]
+        [MaxLength(
+            200,
+            ErrorMessage =
+                "Email cannot exceed 200 characters.")]
+        public string Email { get; set; } =
+            "";
 
-        public string Password { get; set; } = "";
+        [Required(
+            ErrorMessage =
+                "Password is required.")]
+        [MinLength(
+            6,
+            ErrorMessage =
+                "Password must be at least 6 characters.")]
+        public string Password { get; set; } =
+            "";
 
-        public string ConfirmPassword { get; set; } = "";
+        [Required(
+            ErrorMessage =
+                "Confirm password is required.")]
+        public string ConfirmPassword { get; set; } =
+            "";
 
-        public bool IsActive { get; set; } = true;
+        public bool IsActive { get; set; } =
+            true;
     }
 }
