@@ -1,4 +1,6 @@
-﻿namespace Contracts.Member;
+﻿using Shared.Models;
+
+namespace Contracts.Member;
 
 public class MemberListDto
 {
@@ -42,4 +44,13 @@ public sealed class UpdateMemberRequest
     public string Email { get; set; } = "";
 
     public bool IsActive { get; set; }
+}
+public record class MemberFilterRequest
+    : OffsetPagedRequest
+{
+    public string? Name { get; set; }
+
+    public string? Email { get; set; }
+
+    public bool? IsActive { get; set; }
 }

@@ -179,12 +179,18 @@
               Breakpoint="Breakpoint.Sm"
               Class="bms-table">
         <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
             <MudTh><MudTableSortLabel T="UserListDto" SortLabel="email">Email</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel T="UserListDto" SortLabel="role">Role</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel T="UserListDto" SortLabel="active">Active</MudTableSortLabel></MudTh>
             <MudTh Style="text-align:right">Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
             <MudTd DataLabel="Email">@context.Email</MudTd>
             <MudTd DataLabel="Role">
                 <span class="role-badge @context.RoleName.ToLowerInvariant()">@context.RoleName</span>

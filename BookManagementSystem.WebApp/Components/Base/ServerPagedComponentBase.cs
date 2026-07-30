@@ -14,6 +14,8 @@ public abstract class ServerPagedComponentBase<TItem> : ComponentBase
 
     protected int LoadedItemCount { get; private set; }
 
+    protected IReadOnlyList<TItem> LoadedItems { get; private set; } = [];
+
     protected abstract Task<Result<OffsetPagedResult<TItem>>> FetchPageAsync(
         TableState state,
         CancellationToken cancellationToken);
@@ -46,8 +48,11 @@ public abstract class ServerPagedComponentBase<TItem> : ComponentBase
 
             if (result.IsSuccess && result.Data is not null)
             {
+                LoadedItems = result.Data.Items;
                 LoadedItemCount = result.Data.Items.Count;
+
                 OnPageLoadSucceeded();
+
                 return new TableData<TItem>
                 {
                     Items = result.Data.Items,
@@ -55,7 +60,9 @@ public abstract class ServerPagedComponentBase<TItem> : ComponentBase
                 };
             }
 
+            LoadedItems = [];
             LoadedItemCount = 0;
+
             OnPageLoadFailed(result.Message);
             return EmptyTableData();
         }
@@ -111,4 +118,13 @@ public abstract class ServerPagedComponentBase<TItem> : ComponentBase
         Items = [],
         TotalItems = 0
     };
+    protected int GetRowNumber(TItem item)
+    {
+        var index = LoadedItems.ToList().IndexOf(item);
+
+        if (index == -1)
+            return 0;
+
+        return (Table.CurrentPage * Table.RowsPerPage) + index + 1;
+    }
 }

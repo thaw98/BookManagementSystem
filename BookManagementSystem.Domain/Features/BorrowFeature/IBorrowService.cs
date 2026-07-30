@@ -23,7 +23,8 @@ public interface IBorrowService
         long userId,
         CancellationToken cancellationToken);
 
-    Task<Result<List<BorrowHistoryDto>>> GetBorrowHistoryAsync(
-        BorrowFilterRequest request,
-        CancellationToken cancellationToken);
+    Task<Result<OffsetPagedResult<BorrowHistoryDto>>>
+        GetBorrowHistoryAsync(
+            BorrowFilterRequest request,
+            CancellationToken cancellationToken);
 }

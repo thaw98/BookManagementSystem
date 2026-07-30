@@ -8,6 +8,10 @@ public interface IMemberService
     Task<Result<List<MemberListDto>>> GetAllAsync(
         CancellationToken cancellationToken = default);
 
+    Task<Result<OffsetPagedResult<MemberListDto>>> GetPagedAsync(
+        MemberFilterRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<Result<MemberDetailDto>> GetByIdAsync(
         long id,
         CancellationToken cancellationToken = default);

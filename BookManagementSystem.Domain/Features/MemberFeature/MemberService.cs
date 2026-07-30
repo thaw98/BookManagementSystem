@@ -31,6 +31,65 @@ public sealed class MemberService(
         return Result<List<MemberListDto>>.Success(members);
     }
 
+    public async Task<Result<OffsetPagedResult<MemberListDto>>> GetPagedAsync(
+        MemberFilterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Users
+            .AsNoTracking()
+            .Where(x => x.Role.Name == RoleNames.LibraryMember)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var name = request.Name.Trim();
+
+            query = query.Where(
+                x => x.FullName.Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim();
+
+            query = query.Where(
+                x => x.Email.Contains(email));
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            query = query.Where(
+                x => x.IsActive == request.IsActive.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+
+            query = query.Where(
+                x =>
+                    x.FullName.Contains(search) ||
+                    x.Email.Contains(search));
+        }
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            query,
+            request,
+            source => ApplyPagedOrdering(source, request),
+            x => new MemberListDto
+            {
+                Id = x.Id,
+                FullName = x.FullName,
+                Email = x.Email,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<MemberListDto>>
+            .Success(page);
+    }
+
     public async Task<Result<MemberDetailDto>> GetByIdAsync(
         long id,
         CancellationToken cancellationToken = default)
@@ -67,7 +126,9 @@ public sealed class MemberService(
         CancellationToken cancellationToken = default)
     {
         var fullName = request.FullName.Trim();
-        var email = request.Email.Trim().ToLowerInvariant();
+        var email = request.Email
+            .Trim()
+            .ToLowerInvariant();
 
         if (string.IsNullOrWhiteSpace(fullName))
         {
@@ -152,7 +213,9 @@ public sealed class MemberService(
         }
 
         var fullName = request.FullName.Trim();
-        var email = request.Email.Trim().ToLowerInvariant();
+        var email = request.Email
+            .Trim()
+            .ToLowerInvariant();
 
         if (string.IsNullOrWhiteSpace(fullName))
         {
@@ -168,7 +231,9 @@ public sealed class MemberService(
 
         var duplicateEmail = await db.Users
             .AnyAsync(
-                x => x.Id != id && x.Email == email,
+                x =>
+                    x.Id != id &&
+                    x.Email == email,
                 cancellationToken);
 
         if (duplicateEmail)
@@ -183,7 +248,9 @@ public sealed class MemberService(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return await GetByIdAsync(id, cancellationToken);
+        return await GetByIdAsync(
+            id,
+            cancellationToken);
     }
 
     public async Task<Result<bool>> DeleteAsync(
@@ -210,4 +277,57 @@ public sealed class MemberService(
 
         return Result<bool>.Success(true);
     }
+
+    private static IOrderedQueryable<User> ApplyPagedOrdering(
+        IQueryable<User> query,
+        MemberFilterRequest request) =>
+        (request.SortBy, request.SortDescending) switch
+        {
+            ("fullName", true) =>
+                query
+                    .OrderByDescending(x => x.FullName)
+                    .ThenBy(x => x.Id),
+
+            ("fullName", false) =>
+                query
+                    .OrderBy(x => x.FullName)
+                    .ThenBy(x => x.Id),
+
+            ("email", true) =>
+                query
+                    .OrderByDescending(x => x.Email)
+                    .ThenBy(x => x.Id),
+
+            ("email", false) =>
+                query
+                    .OrderBy(x => x.Email)
+                    .ThenBy(x => x.Id),
+
+            ("isActive", true) =>
+                query
+                    .OrderByDescending(x => x.IsActive)
+                    .ThenBy(x => x.FullName)
+                    .ThenBy(x => x.Id),
+
+            ("isActive", false) =>
+                query
+                    .OrderBy(x => x.IsActive)
+                    .ThenBy(x => x.FullName)
+                    .ThenBy(x => x.Id),
+
+            ("createdAt", true) =>
+                query
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ThenBy(x => x.Id),
+
+            ("createdAt", false) =>
+                query
+                    .OrderBy(x => x.CreatedAt)
+                    .ThenBy(x => x.Id),
+
+            _ =>
+                query
+                    .OrderBy(x => x.FullName)
+                    .ThenBy(x => x.Id)
+        };
 }

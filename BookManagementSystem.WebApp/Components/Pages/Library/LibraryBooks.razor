@@ -100,6 +100,9 @@
               Class="bms-table">
 
         <HeaderContent>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
             <MudTh>
                 <MudTableSortLabel T="BookListDto"
                                    SortLabel="title">
@@ -134,6 +137,9 @@
         </HeaderContent>
 
         <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
             <MudTd DataLabel="Title">
                 @context.Title
             </MudTd>

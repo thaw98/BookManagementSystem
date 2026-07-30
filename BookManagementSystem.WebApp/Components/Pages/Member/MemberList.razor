@@ -1,5 +1,6 @@
 ﻿@page "/members"
 @attribute [Authorize(Roles = "Librarian")]
+@inherits ServerPagedComponentBase<MemberListDto>
 
 @inject ApiClient Api
 @inject ISnackbar Snackbar
@@ -215,13 +216,13 @@
 
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
-                       OnClick="ApplyFilters">
+                       OnClick="SearchAsync">
                 Search
             </MudButton>
 
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Default"
-                       OnClick="ClearFilters">
+                       OnClick="ClearFiltersAsync">
                 Clear
             </MudButton>
 
@@ -241,7 +242,8 @@
           Elevation="0">
 
     <MudTable T="MemberListDto"
-              Items="@FilteredMembers"
+              @ref="Table"
+              ServerData="LoadServerDataAsync"
               RowsPerPage="10"
               Hover="true"
               Dense="true"
@@ -249,16 +251,48 @@
               Class="bms-table">
 
         <HeaderContent>
-            <MudTh>Full Name</MudTh>
-            <MudTh>Email</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh>Created At</MudTh>
+            <MudTh Style="width:70px">
+                No.
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="fullName">
+                    Full Name
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="email">
+                    Email
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="isActive">
+                    Status
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="MemberListDto"
+                                   SortLabel="createdAt">
+                    Created At
+                </MudTableSortLabel>
+            </MudTh>
+
             <MudTh Style="text-align:right">
                 Actions
             </MudTh>
         </HeaderContent>
 
         <RowTemplate>
+            <MudTd DataLabel="No.">
+                @GetRowNumber(context)
+            </MudTd>
+
             <MudTd DataLabel="Full Name">
                 <div class="d-flex align-center gap-2">
                     <MudAvatar Size="Size.Small"
@@ -281,8 +315,8 @@
                          Size="Size.Small"
                          Variant="Variant.Outlined"
                          Color="@(context.IsActive
-                                                              ? Color.Success
-                                                              : Color.Default)">
+                                                               ? Color.Success
+                                                               : Color.Default)">
                     @(context.IsActive
                         ? "Active"
                         : "Inactive")
@@ -339,10 +373,6 @@
     private const string InactiveStatus =
         "inactive";
 
-    private List<MemberListDto> Members { get; set; } = [];
-
-    private List<MemberListDto> FilteredMembers { get; set; } = [];
-
     private MemberForm _createForm =
         new()
         {
@@ -365,98 +395,102 @@
     private string StatusFilter { get; set; } =
         AllStatus;
 
-    private bool IsLoading { get; set; }
+    private string? _appliedNameFilter;
+
+    private string? _appliedEmailFilter;
+
+    private string _appliedStatusFilter =
+        AllStatus;
 
     private bool IsSuccess { get; set; }
 
     private string? Message { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override Task<Result<OffsetPagedResult<MemberListDto>>>
+        FetchPageAsync(
+            TableState state,
+            CancellationToken cancellationToken)
     {
-        await LoadMembersAsync();
+        var queryParameters = new List<string>
+        {
+            $"page={state.Page + 1}",
+            $"pageSize={state.PageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(_appliedNameFilter))
+        {
+            queryParameters.Add(
+                $"name={Uri.EscapeDataString(_appliedNameFilter)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_appliedEmailFilter))
+        {
+            queryParameters.Add(
+                $"email={Uri.EscapeDataString(_appliedEmailFilter)}");
+        }
+
+        if (_appliedStatusFilter == ActiveStatus)
+        {
+            queryParameters.Add("isActive=true");
+        }
+        else if (_appliedStatusFilter == InactiveStatus)
+        {
+            queryParameters.Add("isActive=false");
+        }
+
+        AddSortingParameters(
+            queryParameters,
+            state);
+
+        return Api.GetAsync<OffsetPagedResult<MemberListDto>>(
+            "api/Member/paged?" +
+            string.Join("&", queryParameters),
+            cancellationToken);
     }
 
-    private async Task LoadMembersAsync()
+    protected override void OnPageLoadSucceeded()
     {
-        IsLoading = true;
+        Message = null;
+    }
+
+    protected override void OnPageLoadFailed(
+        string message)
+    {
+        SetMessage(message, false);
+    }
+
+    private async Task SearchAsync()
+    {
+        _appliedNameFilter =
+            string.IsNullOrWhiteSpace(NameFilter)
+                ? null
+                : NameFilter.Trim();
+
+        _appliedEmailFilter =
+            string.IsNullOrWhiteSpace(EmailFilter)
+                ? null
+                : EmailFilter.Trim();
+
+        _appliedStatusFilter = StatusFilter;
+
         Message = null;
 
-        try
-        {
-            var result =
-                await Api.GetAsync<List<MemberListDto>>(
-                    "api/Member");
-
-            if (result.IsSuccess)
-            {
-                Members = result.Data ?? [];
-                ApplyFilters();
-                return;
-            }
-
-            Members = [];
-            FilteredMembers = [];
-            SetMessage(result.Message, false);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        await ReloadFromFirstPageAsync();
     }
 
-    private void ApplyFilters()
-    {
-        IEnumerable<MemberListDto> query =
-            Members;
-
-        if (!string.IsNullOrWhiteSpace(NameFilter))
-        {
-            var name =
-                NameFilter.Trim();
-
-            query = query.Where(
-                member =>
-                    member.FullName.Contains(
-                        name,
-                        StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (!string.IsNullOrWhiteSpace(EmailFilter))
-        {
-            var email =
-                EmailFilter.Trim();
-
-            query = query.Where(
-                member =>
-                    member.Email.Contains(
-                        email,
-                        StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (StatusFilter == ActiveStatus)
-        {
-            query = query.Where(
-                member => member.IsActive);
-        }
-        else if (StatusFilter == InactiveStatus)
-        {
-            query = query.Where(
-                member => !member.IsActive);
-        }
-
-        FilteredMembers =
-            query
-                .OrderBy(member => member.FullName)
-                .ToList();
-    }
-
-    private void ClearFilters()
+    private async Task ClearFiltersAsync()
     {
         NameFilter = null;
         EmailFilter = null;
         StatusFilter = AllStatus;
 
-        ApplyFilters();
+        _appliedNameFilter = null;
+        _appliedEmailFilter = null;
+        _appliedStatusFilter = AllStatus;
+
+        Message = null;
+
+        await ReloadFromFirstPageAsync();
     }
 
     private void OpenCreateDialog()
@@ -555,7 +589,7 @@
     {
         Message = null;
 
-        await LoadMembersAsync();
+        await ReloadFromFirstPageAsync();
 
         Snackbar.Add(
             string.IsNullOrWhiteSpace(result.Message)
@@ -569,7 +603,7 @@
     {
         Message = null;
 
-        await LoadMembersAsync();
+        await ReloadCurrentPageAsync();
 
         Snackbar.Add(
             string.IsNullOrWhiteSpace(result.Message)
@@ -586,7 +620,7 @@
 
         if (result.IsSuccess)
         {
-            await LoadMembersAsync();
+            await ReloadAfterDeleteAsync();
 
             Snackbar.Add(
                 string.IsNullOrWhiteSpace(result.Message)
