@@ -245,10 +245,14 @@ public sealed class BookService(AppDbContext db) : IBookService
                 "This book cannot be deleted while copies are borrowed.");
         }
 
+        var title = book.Title;
+
         db.Books.Remove(book);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.Success(true);
+        return Result<bool>.Success(
+            true,
+            $"Book “{title}” deleted.");
     }
 
     private static string NormalizeTitle(string title) =>

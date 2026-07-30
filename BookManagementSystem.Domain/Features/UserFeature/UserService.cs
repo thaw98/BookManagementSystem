@@ -198,10 +198,14 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         if (user.RoleId == RoleNames.AdminId && !await HasAnotherActiveAdminAsync(id, cancellationToken))
             return Result<bool>.Validation("The system must keep at least one active Admin.");
 
+        var email = user.Email;
+
         await RevokeUserTokensAsync(id, cancellationToken);
         db.Users.Remove(user);
         await db.SaveChangesAsync(cancellationToken);
-        return Result<bool>.Success(true);
+        return Result<bool>.Success(
+            true,
+            $"User “{email}” deleted.");
     }
 
     private async Task<bool> HasAnotherActiveAdminAsync(long id, CancellationToken cancellationToken) =>

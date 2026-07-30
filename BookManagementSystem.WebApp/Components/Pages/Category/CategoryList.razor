@@ -112,11 +112,8 @@
                                    Color="Color.Primary"
                                    OnClick="() => OpenEditDialog(context)"
                                    aria-label="@($"Edit {context.Name}")" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="() => DeleteAsync(context.Id)"
-                                   aria-label="@($"Delete {context.Name}")" />
+                    <DeleteIconButton DisplayName="@context.Name"
+                                      OnDelete="() => DeleteAsync(context.Id, context.Name)" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -219,18 +216,24 @@
         Snackbar.Add(result.Message ?? "Category updated successfully.", Severity.Success);
     }
 
-    private async Task DeleteAsync(long id)
+    private async Task DeleteAsync(long id, string name)
     {
         var result = await Api.DeleteAsync<bool>($"api/Category/{id}");
         if (result.IsSuccess)
         {
             await ReloadAfterDeleteAsync();
-            Snackbar.Add(result.Message ?? "Category deleted successfully.", Severity.Success);
+
+            var message =
+                string.IsNullOrWhiteSpace(result.Message) ||
+                string.Equals(result.Message, "Success", StringComparison.OrdinalIgnoreCase)
+                    ? $"Category “{name}” deleted."
+                    : result.Message;
+
+            Snackbar.Add(message, Severity.Success);
+            return;
         }
-        else
-        {
-            Message = result.Message;
-        }
+
+        Message = result.Message;
     }
 
     private static string EditTriggerId(long id) => $"edit-category-{id}";

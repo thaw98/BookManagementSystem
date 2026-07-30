@@ -227,11 +227,8 @@
                                    Color="Color.Primary"
                                    OnClick="() => OpenEditDialog(context)"
                                    aria-label="@($"Edit {context.Title}")" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="() => DeleteAsync(context.Id)"
-                                   aria-label="@($"Delete {context.Title}")" />
+                    <DeleteIconButton DisplayName="@context.Title"
+                                      OnDelete="() => DeleteAsync(context.Id, context.Title)" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -394,18 +391,24 @@
         Snackbar.Add(result.Message ?? "Book updated successfully.", Severity.Success);
     }
 
-    private async Task DeleteAsync(long id)
+    private async Task DeleteAsync(long id, string title)
     {
         var result = await Api.DeleteAsync<bool>($"api/Book/{id}");
         if (result.IsSuccess)
         {
             await ReloadAfterDeleteAsync();
-            Snackbar.Add(result.Message ?? "Book deleted successfully.", Severity.Success);
+
+            var message =
+                string.IsNullOrWhiteSpace(result.Message) ||
+                string.Equals(result.Message, "Success", StringComparison.OrdinalIgnoreCase)
+                    ? $"Book “{title}” deleted."
+                    : result.Message;
+
+            Snackbar.Add(message, Severity.Success);
+            return;
         }
-        else
-        {
-            Message = result.Message;
-        }
+
+        Message = result.Message;
     }
 
     private static string BorrowedCopiesHelp(BookForm form) =>

@@ -1,8 +1,8 @@
-<div class="sidebar-brand">
-    <div class="brand-logo">
+<div class="sidebar-brand" aria-label="BMS Library System">
+    <div class="brand-logo" role="img" aria-label="BMS logo">
         <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
     </div>
-    <div>
+    <div class="brand-details">
         <h2>BMS</h2>
         <span>Library System</span>
     </div>
@@ -11,30 +11,40 @@
 <div class="sidebar-nav-label">Menu</div>
 
 <MudNavMenu Class="bms-nav">
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard"
+                aria-label="Dashboard" title="Dashboard">
         Dashboard
     </MudNavLink>
 
     <AuthorizeView Roles="Admin">
         <Authorized>
-            <MudNavLink Href="users" Icon="@Icons.Material.Filled.Group">
+            <MudNavLink Href="users" Icon="@Icons.Material.Filled.Group"
+                        aria-label="Users" title="Users">
                 Users
             </MudNavLink>
-            <MudNavLink Href="roles" Icon="@Icons.Material.Filled.Security">
+            <MudNavLink Href="roles" Icon="@Icons.Material.Filled.Security"
+                        aria-label="Roles" title="Roles">
                 Roles
+            </MudNavLink>
+            <MudNavLink Href="audit-logs" Icon="@Icons.Material.Filled.History"
+                        aria-label="Audit Log" title="Audit Log">
+                Audit Log
             </MudNavLink>
         </Authorized>
     </AuthorizeView>
 
     <AuthorizeView Roles="Librarian">
         <Authorized>
-            <MudNavLink Href="authors" Icon="@Icons.Material.Filled.Person">
+            <MudNavLink Href="authors" Icon="@Icons.Material.Filled.Person"
+                        aria-label="Authors" title="Authors">
                 Authors
             </MudNavLink>
-            <MudNavLink Href="categories" Icon="@Icons.Material.Filled.Category">
+            <MudNavLink Href="categories" Icon="@Icons.Material.Filled.Category"
+                        aria-label="Categories" title="Categories">
                 Categories
             </MudNavLink>
-            <MudNavLink Href="books" Icon="@Icons.Material.Filled.AutoStories">
+            <MudNavLink Href="books" Icon="@Icons.Material.Filled.AutoStories"
+                        aria-label="Books" title="Books">
                 Books
             </MudNavLink>
         </Authorized>

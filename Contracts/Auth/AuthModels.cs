@@ -2,6 +2,11 @@ namespace Contracts.Auth;
 
 using System.ComponentModel.DataAnnotations;
 
+public static class AuthFailureCodes
+{
+    public const string DeletedAccount = "account_deleted";
+}
+
 public record class LoginRequest
 {
     [Required]
@@ -33,4 +38,5 @@ public record class TokenResponse
     public long UserId { get; set; }
     public string Email { get; set; } = "";
     public string Role { get; set; } = "";
+    public string FullName { get; set; } = "";
 }

@@ -23,7 +23,7 @@ public sealed class JwtTokenService : IJwtTokenService
             SecurityAlgorithms.HmacSha256);
     }
 
-    public AccessTokenResult CreateAccessToken(long userId, string email, string roleName)
+    public AccessTokenResult CreateAccessToken(long userId, string email, string roleName, string fullName)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes);
         var claims = new[]
@@ -31,6 +31,7 @@ public sealed class JwtTokenService : IJwtTokenService
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim(ClaimTypes.Email, email),
+            new Claim(ClaimTypes.Name, fullName),
             new Claim(ClaimTypes.Role, roleName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
         };

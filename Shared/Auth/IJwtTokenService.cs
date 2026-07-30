@@ -5,7 +5,7 @@ public sealed record RefreshTokenResult(string RawToken, string TokenHash, DateT
 
 public interface IJwtTokenService
 {
-    AccessTokenResult CreateAccessToken(long userId, string email, string roleName);
+    AccessTokenResult CreateAccessToken(long userId, string email, string roleName, string fullName);
     RefreshTokenResult CreateRefreshToken();
     string HashRefreshToken(string rawToken);
 }

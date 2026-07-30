@@ -204,10 +204,14 @@ public sealed class MemberService(
                 "Library member not found.");
         }
 
+        var fullName = member.FullName;
+
         db.Users.Remove(member);
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.Success(true);
+        return Result<bool>.Success(
+            true,
+            $"Library member “{fullName}” deleted.");
     }
 }

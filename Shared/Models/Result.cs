@@ -15,6 +15,7 @@ public sealed class Result<T>
 {
     public bool IsSuccess { get; init; }
     public string Message { get; init; } = "";
+    public string? Code { get; init; }
     public ResultStatus Status { get; init; }
     public T? Data { get; init; }
 
@@ -33,8 +34,8 @@ public sealed class Result<T>
     public static Result<T> Duplicate(string message = "Duplicate record.") =>
         new() { Status = ResultStatus.Duplicate, Message = message };
 
-    public static Result<T> Unauthorized(string message = "Authentication failed.") =>
-        new() { Status = ResultStatus.Unauthorized, Message = message };
+    public static Result<T> Unauthorized(string message = "Authentication failed.", string? code = null) =>
+        new() { Status = ResultStatus.Unauthorized, Message = message, Code = code };
 
     public static Result<T> Forbidden(string message = "Forbidden.") =>
         new() { Status = ResultStatus.Forbidden, Message = message };

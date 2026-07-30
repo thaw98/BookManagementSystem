@@ -9,12 +9,12 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="0" Class="bms-appbar" Dense="true">
+    <MudAppBar Elevation="0" Class="bms-appbar">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
                        Edge="Edge.Start"
                        OnClick="ToggleDrawer"
-                       aria-label="Toggle menu" />
+                       aria-label="@(_drawerOpen ? "Collapse navigation" : "Expand navigation")" />
         <div class="topbar-context">
             <div class="topbar-eyebrow">BMS</div>
             <div class="topbar-page">@_pageTitle</div>
@@ -23,19 +23,14 @@
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="topbar-actions">
-                    <form method="post" action="/account/logout" class="topbar-logout-form">
-                        <MudButton ButtonType="ButtonType.Submit"
-                                   Variant="Variant.Text"
-                                   StartIcon="@Icons.Material.Filled.Logout"
-                                   Class="topbar-logout-button">
-                            Logout
-                        </MudButton>
-                    </form>
                     <MudMenu AnchorOrigin="Origin.BottomRight"
                              TransformOrigin="Origin.TopRight"
-                             Class="profile-menu-panel">
-                    <ActivatorContent>
-                        <MudButton Variant="Variant.Text" Class="profile-trigger">
+                             PopoverClass="profile-menu-panel">
+                    <ActivatorContent Context="context">
+                        <MudButton Variant="Variant.Text"
+                                   Class="profile-trigger"
+                                   OnClick="@context.ToggleAsync"
+                                   aria-label="Open profile menu">
                             <MudAvatar Size="Size.Small" Color="Color.Primary">
                                 @GetInitial(auth.User)
                             </MudAvatar>
@@ -81,12 +76,13 @@
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen"
-               ClipMode="DrawerClipMode.Always"
+               ClipMode="DrawerClipMode.Never"
                Elevation="0"
                Variant="@DrawerVariant.Mini"
                OpenMiniOnHover="false"
                Class="bms-drawer"
-               Breakpoint="Breakpoint.Md">
+               Breakpoint="Breakpoint.Md"
+               aria-label="Primary navigation">
         <NavMenu />
     </MudDrawer>
 
@@ -142,7 +138,10 @@
         },
         LayoutProperties = new LayoutProperties
         {
-            DefaultBorderRadius = "10px"
+            DefaultBorderRadius = "10px",
+            DrawerWidthLeft = "272px",
+            DrawerMiniWidthLeft = "72px",
+            AppbarHeight = "64px"
         }
     };
 

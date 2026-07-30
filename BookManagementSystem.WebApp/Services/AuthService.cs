@@ -14,7 +14,11 @@ public sealed class AuthService(IHttpClientFactory httpClientFactory, TokenStora
         var response = await client.PostAsJsonAsync("api/Auth/Login", new LoginRequest { Email = email, Password = password }, cancellationToken);
         var result = await response.Content.ReadFromJsonAsync<Result<TokenResponse>>(cancellationToken: cancellationToken);
         if (result?.IsSuccess != true || result.Data is null)
-            return Result<bool>.Unauthorized("Invalid email or password.");
+            return Result<bool>.Unauthorized(
+                result?.Code == AuthFailureCodes.DeletedAccount
+                    ? "Your account has been deleted. Contact an administrator."
+                    : "Invalid email or password.",
+                result?.Code);
 
         var sessionId = Guid.NewGuid().ToString("N");
         tokenStorage.Set(sessionId, new TokenEntry(result.Data.AccessToken, result.Data.RefreshToken));
@@ -24,6 +28,7 @@ public sealed class AuthService(IHttpClientFactory httpClientFactory, TokenStora
             new("sid", sessionId),
             new(ClaimTypes.NameIdentifier, result.Data.UserId.ToString()),
             new(ClaimTypes.Email, result.Data.Email),
+            new(ClaimTypes.Name, result.Data.FullName),
             new(ClaimTypes.Role, result.Data.Role)
         };
 

@@ -142,10 +142,8 @@ else if (FilteredMembers.Any())
                             Edit
                         </button>
 
-                        <button class="btn btn-sm btn-outline-danger"
-                                @onclick="() => DeleteAsync(member.Id)">
-                            Delete
-                        </button>
+                        <DeleteIconButton DisplayName="@member.FullName"
+                                          OnDelete="() => DeleteAsync(member.Id, member.FullName)" />
                     </td>
                 </tr>
             }
@@ -199,7 +197,7 @@ else
         await LoadMembersAsync();
     }
 
-    private async Task LoadMembersAsync()
+    private async Task<bool> LoadMembersAsync()
     {
         IsLoading = true;
 
@@ -214,6 +212,7 @@ else
         }
 
         IsLoading = false;
+        return result.IsSuccess;
     }
 
     private void Edit(MemberListDto member)
@@ -308,22 +307,32 @@ else
         await LoadMembersAsync();
     }
 
-    private async Task DeleteAsync(long id)
+    private async Task DeleteAsync(long id, string fullName)
     {
         var result =
             await Api.DeleteAsync<bool>($"api/Member/{id}");
 
-        SetMessage(result.Message, result.IsSuccess);
-
-        if (result.IsSuccess)
+        if (!result.IsSuccess)
         {
-            if (Form.Id == id)
-            {
-                ClearFormOnly();
-            }
-
-            await LoadMembersAsync();
+            SetMessage(result.Message, false);
+            return;
         }
+
+        if (Form.Id == id)
+        {
+            ClearFormOnly();
+        }
+
+        if (!await LoadMembersAsync())
+            return;
+
+        var message =
+            string.IsNullOrWhiteSpace(result.Message) ||
+            string.Equals(result.Message, "Success", StringComparison.OrdinalIgnoreCase)
+                ? $"Library member “{fullName}” deleted."
+                : result.Message;
+
+        SetMessage(message, true);
     }
 
     private void ClearFormOnly()
