@@ -2,10 +2,13 @@
 using Shared.Models;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BookManagementSystem.Domain.Features.AuthorFeature;
 
-public sealed class AuthorService(AppDbContext db) : IAuthorService
+public sealed class AuthorService(
+    AppDbContext db,
+    ILogger<AuthorService> logger) : IAuthorService
 {
     public async Task<Result<List<AuthorDto>>> GetAllAsync(
         CancellationToken cancellationToken)
@@ -99,6 +102,11 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
         db.Authors.Add(author);
         await db.SaveChangesAsync(cancellationToken);
 
+        logger.LogInformation(
+        "Author created. AuthorId: {AuthorId}, AuthorName: {AuthorName}",
+        author.Id,
+        author.Name);
+
         return Result<long>.Success(author.Id);
     }
 
@@ -128,9 +136,19 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
             return Result<AuthorDto>.Duplicate(
                 "Author already exists.");
 
+        // Save the original name before changing it
+        var oldName = author.Name;
+
         author.Name = name;
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Record the successful update
+        logger.LogInformation(
+            "Author updated. AuthorId: {AuthorId}, OldName: {OldName}, NewName: {NewName}",
+            author.Id,
+            oldName,
+            author.Name);
 
         return await GetByIdAsync(id, cancellationToken);
     }
@@ -140,16 +158,31 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
         CancellationToken cancellationToken)
     {
         var author = await db.Authors
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
 
         if (author is null)
-            return Result<bool>.NotFound("Author not found.");
+        {
+            logger.LogWarning(
+                "Author deletion failed because the author was not found. AuthorId: {AuthorId}",
+                id);
+
+            return Result<bool>.NotFound(
+                "Author not found.");
+        }
 
         var hasBooks = await db.Books
-            .AnyAsync(x => x.AuthorId == id, cancellationToken);
+            .AnyAsync(
+                x => x.AuthorId == id,
+                cancellationToken);
 
         if (hasBooks)
         {
+            logger.LogWarning(
+                "Author deletion blocked because books reference the author. AuthorId: {AuthorId}",
+                id);
+
             return Result<bool>.Validation(
                 "This author cannot be deleted because books are using this author.");
         }
@@ -158,6 +191,11 @@ public sealed class AuthorService(AppDbContext db) : IAuthorService
 
         db.Authors.Remove(author);
         await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Author deleted. AuthorId: {AuthorId}, AuthorName: {AuthorName}",
+            id,
+            name);
 
         return Result<bool>.Success(
             true,

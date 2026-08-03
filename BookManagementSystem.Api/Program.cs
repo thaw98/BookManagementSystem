@@ -8,8 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Shared.Auth;
 using Shared.Middlewares;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSerilog((services, loggerConfiguration) =>
+    loggerConfiguration
+        .ReadFrom.Configuration(builder.Configuration)
+        .ReadFrom.Services(services));
 
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection")
@@ -58,12 +64,15 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<IDbSeeder>().SeedAsync();
 }
+
+app.UseSerilogRequestLogging();
 
 app.UseSwagger();
 app.UseSwaggerUI();
