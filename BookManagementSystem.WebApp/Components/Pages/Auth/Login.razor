@@ -44,13 +44,23 @@
 
         <div class="mb-4">
             <label for="password" class="login-label">Password</label>
-            <input id="password"
-                   name="password"
-                   type="password"
-                   class="bms-input"
-                   placeholder="Enter password"
-                   required
-                   autocomplete="current-password" />
+            <div class="login-password-input">
+                <input id="password"
+                       name="password"
+                       type="@LoginPasswordInputType"
+                       class="bms-input"
+                       placeholder="Enter password"
+                       required
+                       autocomplete="current-password" />
+                <button type="button"
+                        class="login-password-toggle"
+                        aria-label="@LoginPasswordToggleLabel"
+                        title="@LoginPasswordToggleLabel"
+                        aria-pressed="@LoginPasswordAriaPressed"
+                        @onclick="ToggleLoginPasswordVisibility">
+                    <MudIcon Icon="@LoginPasswordToggleIcon" Size="Size.Small" aria-hidden="true" />
+                </button>
+            </div>
         </div>
 
         <MudButton ButtonType="ButtonType.Submit"
@@ -67,4 +77,23 @@
 @code {
     [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+
+    private bool _loginPasswordVisible;
+
+    private string LoginPasswordInputType => _loginPasswordVisible ? "text" : "password";
+
+    private string LoginPasswordToggleIcon => _loginPasswordVisible
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private string LoginPasswordToggleLabel => _loginPasswordVisible
+        ? "Hide password"
+        : "Show password";
+
+    private string LoginPasswordAriaPressed => _loginPasswordVisible ? "true" : "false";
+
+    private void ToggleLoginPasswordVisibility()
+    {
+        _loginPasswordVisible = !_loginPasswordVisible;
+    }
 }

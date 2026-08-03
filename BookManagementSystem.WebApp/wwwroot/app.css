@@ -187,6 +187,53 @@ button, input, select, textarea {
     color: var(--text-muted);
 }
 
+.login-password-input {
+    position: relative;
+    width: 100%;
+}
+
+.login-password-input .bms-input {
+    padding-right: 56px;
+}
+
+.login-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.login-password-toggle:hover {
+    background: #f3f4f6;
+    color: var(--text);
+}
+
+.login-password-toggle:focus {
+    outline: none;
+}
+
+.login-password-toggle:focus-visible {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+.login-password-toggle .mud-icon-root {
+    color: currentColor !important;
+}
+
 .login-submit.mud-button-filled {
     padding: 12px 18px !important;
     font-weight: 600 !important;

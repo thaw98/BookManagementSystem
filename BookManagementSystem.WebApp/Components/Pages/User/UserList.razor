@@ -67,9 +67,13 @@
                 <MudTextField @bind-Value="model.Password"
                               For="@(() => model.Password)"
                               Label="Password"
-                              InputType="InputType.Password"
+                              InputType="@UserPasswordInputType"
                               Variant="Variant.Outlined"
-                              Required="true" />
+                              Required="true"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@UserPasswordAdornmentIcon"
+                              AdornmentAriaLabel="@UserPasswordAdornmentLabel"
+                              OnAdornmentClick="ToggleUserPasswordVisibility" />
             </MudItem>
             <MudItem xs="12" sm="5" Class="bms-dialog-checkbox">
                 <MudCheckBox @bind-Value="model.IsActive"
@@ -253,6 +257,7 @@
     private bool _createDialogOpen;
     private bool _editDialogOpen;
     private bool _resetDialogOpen;
+    private bool _userPasswordVisible;
     private long _resetUserId;
     private string? _resetUserEmail;
     private string? _editReturnFocusId;
@@ -327,6 +332,7 @@
     private void OpenCreateDialog()
     {
         _createForm = NewCreateForm();
+        _userPasswordVisible = false;
         Message = null;
         _createDialogOpen = true;
     }
@@ -431,6 +437,23 @@
         RoleId = Roles.FirstOrDefault()?.Id ?? 0,
         IsActive = true
     };
+
+    private InputType UserPasswordInputType => _userPasswordVisible
+        ? InputType.Text
+        : InputType.Password;
+
+    private string UserPasswordAdornmentIcon => _userPasswordVisible
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private string UserPasswordAdornmentLabel => _userPasswordVisible
+        ? "Hide password"
+        : "Show password";
+
+    private void ToggleUserPasswordVisibility()
+    {
+        _userPasswordVisible = !_userPasswordVisible;
+    }
 
     private static string EditTriggerId(long id) => $"edit-user-{id}";
     private static string ResetTriggerId(long id) => $"reset-password-user-{id}";

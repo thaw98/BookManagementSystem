@@ -79,9 +79,13 @@
                               For="@(() => model.Password)"
                               Label="Password"
                               Variant="Variant.Outlined"
-                              InputType="InputType.Password"
+                              InputType="@MemberPasswordInputType"
                               Required="true"
-                              Immediate="true" />
+                              Immediate="true"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@MemberPasswordAdornmentIcon"
+                              AdornmentAriaLabel="@MemberPasswordAdornmentLabel"
+                              OnAdornmentClick="ToggleMemberPasswordVisibility" />
             </MudItem>
 
             <MudItem xs="12"
@@ -90,9 +94,13 @@
                               For="@(() => model.ConfirmPassword)"
                               Label="Confirm password"
                               Variant="Variant.Outlined"
-                              InputType="InputType.Password"
+                              InputType="@MemberConfirmPasswordInputType"
                               Required="true"
-                              Immediate="true" />
+                              Immediate="true"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@MemberConfirmPasswordAdornmentIcon"
+                              AdornmentAriaLabel="@MemberConfirmPasswordAdornmentLabel"
+                              OnAdornmentClick="ToggleMemberConfirmPasswordVisibility" />
             </MudItem>
 
             <MudItem xs="12">
@@ -386,6 +394,10 @@
 
     private bool _editDialogOpen;
 
+    private bool _memberPasswordVisible;
+
+    private bool _memberConfirmPasswordVisible;
+
     private string? _editReturnFocusId;
 
     private string? NameFilter { get; set; }
@@ -501,6 +513,8 @@
                 IsActive = true
             };
 
+        _memberPasswordVisible = false;
+        _memberConfirmPasswordVisible = false;
         Message = null;
         _createDialogOpen = true;
     }
@@ -647,6 +661,40 @@
     private static string EditTriggerId(long id)
     {
         return $"edit-member-{id}";
+    }
+
+    private InputType MemberPasswordInputType => _memberPasswordVisible
+        ? InputType.Text
+        : InputType.Password;
+
+    private string MemberPasswordAdornmentIcon => _memberPasswordVisible
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private string MemberPasswordAdornmentLabel => _memberPasswordVisible
+        ? "Hide password"
+        : "Show password";
+
+    private InputType MemberConfirmPasswordInputType => _memberConfirmPasswordVisible
+        ? InputType.Text
+        : InputType.Password;
+
+    private string MemberConfirmPasswordAdornmentIcon => _memberConfirmPasswordVisible
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private string MemberConfirmPasswordAdornmentLabel => _memberConfirmPasswordVisible
+        ? "Hide password"
+        : "Show password";
+
+    private void ToggleMemberPasswordVisibility()
+    {
+        _memberPasswordVisible = !_memberPasswordVisible;
+    }
+
+    private void ToggleMemberConfirmPasswordVisibility()
+    {
+        _memberConfirmPasswordVisible = !_memberConfirmPasswordVisible;
     }
 
     private static string GetInitial(
