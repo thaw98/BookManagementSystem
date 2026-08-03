@@ -37,6 +37,17 @@
                     ReturnFocusElementId="@AddTriggerId">
     <FormFields Context="model">
         <MudGrid Spacing="2" Class="bms-dialog-grid">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.FullName"
+                              For="@(() => model.FullName)"
+                              Label="Full name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              Counter="150"
+                              MaxLength="150"
+                              AutoFocus="true" />
+            </MudItem>
             <MudItem xs="12" sm="7">
                 <MudTextField @bind-Value="model.Email"
                               For="@(() => model.Email)"
@@ -46,8 +57,7 @@
                               Required="true"
                               Immediate="true"
                               Counter="150"
-                              MaxLength="150"
-                              AutoFocus="true" />
+                              MaxLength="150" />
             </MudItem>
             <MudItem xs="12" sm="5">
                 <MudSelect T="long"
@@ -88,13 +98,24 @@
                   @bind-IsOpen="_editDialogOpen"
                   Model="@_editForm"
                   EntityLabel="User"
-                  SupportingText="Update the account email, role, or active state."
+                  SupportingText="Update the user's name, email, role, or active state."
                   DialogWidth="MaxWidth.Medium"
                   Submit="UpdateUserAsync"
                   OnSuccess="OnUserUpdatedAsync"
                   ReturnFocusElementId="@_editReturnFocusId">
     <FormFields Context="model">
         <MudGrid Spacing="2" Class="bms-dialog-grid">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.FullName"
+                              For="@(() => model.FullName)"
+                              Label="Full name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Immediate="true"
+                              Counter="150"
+                              MaxLength="150"
+                              AutoFocus="true" />
+            </MudItem>
             <MudItem xs="12" sm="7">
                 <MudTextField @bind-Value="model.Email"
                               For="@(() => model.Email)"
@@ -104,8 +125,7 @@
                               Required="true"
                               Immediate="true"
                               Counter="150"
-                              MaxLength="150"
-                              AutoFocus="true" />
+                              MaxLength="150" />
             </MudItem>
             <MudItem xs="12" sm="5">
                 <MudSelect T="long"
@@ -186,6 +206,7 @@
             <MudTh Style="width:70px">
                 No.
             </MudTh>
+            <MudTh><MudTableSortLabel T="UserListDto" SortLabel="fullName">Full Name</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel T="UserListDto" SortLabel="email">Email</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel T="UserListDto" SortLabel="role">Role</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel T="UserListDto" SortLabel="active">Active</MudTableSortLabel></MudTh>
@@ -195,6 +216,7 @@
             <MudTd DataLabel="No.">
                 @GetRowNumber(context)
             </MudTd>
+            <MudTd DataLabel="Full Name">@context.FullName</MudTd>
             <MudTd DataLabel="Email">@context.Email</MudTd>
             <MudTd DataLabel="Role">
                 <span class="role-badge @context.RoleName.ToLowerInvariant()">@context.RoleName</span>
@@ -224,15 +246,15 @@
                                    Size="Size.Small"
                                    Color="Color.Primary"
                                    OnClick="() => OpenEditDialog(context)"
-                                   aria-label="@($"Edit {context.Email}")" />
+                                   aria-label="@($"Edit {GetUserDisplayName(context)}")" />
                     <MudIconButton id="@ResetTriggerId(context.Id)"
                                    Icon="@Icons.Material.Filled.LockReset"
                                    Size="Size.Small"
                                    Color="Color.Warning"
                                    OnClick="() => OpenResetDialog(context)"
-                                   aria-label="@($"Reset password for {context.Email}")" />
-                    <DeleteIconButton DisplayName="@context.Email"
-                                      OnDelete="() => DeleteAsync(context.Id, context.Email)" />
+                                   aria-label="@($"Reset password for {GetUserDisplayName(context)}")" />
+                    <DeleteIconButton DisplayName="@GetUserDisplayName(context)"
+                                      OnDelete="() => DeleteAsync(context.Id, GetUserDisplayName(context))" />
                 }
             </MudTd>
         </RowTemplate>
@@ -342,6 +364,7 @@
         _editForm = new UserEditForm
         {
             Id = user.Id,
+            FullName = user.FullName,
             Email = user.Email,
             RoleId = user.RoleId,
             IsActive = user.IsActive
@@ -364,6 +387,7 @@
     {
         var result = await Api.PostAsync<long>("api/User", new CreateUserRequest
         {
+            FullName = form.FullName.Trim(),
             Email = form.Email.Trim(),
             Password = form.Password,
             RoleId = form.RoleId,
@@ -376,6 +400,7 @@
     {
         var result = await Api.PutAsync<UserDetailDto>($"api/User/{form.Id}", new UpdateUserRequest
         {
+            FullName = form.FullName.Trim(),
             Email = form.Email.Trim(),
             RoleId = form.RoleId,
             IsActive = form.IsActive
@@ -458,8 +483,15 @@
     private static string EditTriggerId(long id) => $"edit-user-{id}";
     private static string ResetTriggerId(long id) => $"reset-password-user-{id}";
 
+    private static string GetUserDisplayName(UserListDto user) =>
+        $"{user.FullName} ({user.Email})";
+
     private sealed class UserCreateForm
     {
+        [Required(ErrorMessage = "Full name is required.")]
+        [MaxLength(150, ErrorMessage = "Full name cannot exceed 150 characters.")]
+        public string FullName { get; set; } = "";
+
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Enter a valid email address.")]
         [MaxLength(150, ErrorMessage = "Email cannot exceed 150 characters.")]
@@ -477,6 +509,10 @@
     private sealed class UserEditForm
     {
         public long Id { get; set; }
+
+        [Required(ErrorMessage = "Full name is required.")]
+        [MaxLength(150, ErrorMessage = "Full name cannot exceed 150 characters.")]
+        public string FullName { get; set; } = "";
 
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Enter a valid email address.")]
