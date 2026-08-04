@@ -459,23 +459,46 @@ button, input, select, textarea {
 .pd-action-form {
     width: 100%;
     margin: 0;
+    padding: 0;
 }
 
-.pd-action {
+.pd-action.mud-button-root {
+    display: flex;
     width: 100%;
+    min-width: 0;
     min-height: 44px;
-    justify-content: flex-start !important;
     border-radius: 12px !important;
     padding: 10px 12px !important;
+    color: var(--text) !important;
+    font-size: 0.875rem !important;
     font-weight: 600 !important;
+    line-height: 1.5;
+    text-align: left;
+    text-transform: none !important;
     transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
-.pd-profile.mud-list-item {
-    color: var(--text) !important;
+.pd-action.mud-button-root .mud-button-label {
+    justify-content: flex-start;
+    width: 100%;
 }
 
-.pd-profile.mud-list-item:hover {
+.pd-action.mud-button-root .mud-button-icon-start {
+    display: inline-flex;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    margin-inline-start: 0;
+    margin-inline-end: 10px;
+}
+
+.pd-action.mud-button-root .mud-button-icon-start .mud-icon-root {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+}
+
+.pd-profile.mud-button-root:hover {
     background: #f8fafc !important;
 }
 
@@ -487,8 +510,7 @@ button, input, select, textarea {
     background: #fef2f2 !important;
 }
 
-.pd-action:focus-visible,
-.pd-action .mud-list-item-clickable:focus-visible {
+.pd-action.mud-button-root:focus-visible {
     outline: 3px solid rgba(37, 99, 235, 0.35);
     outline-offset: 1px;
 }

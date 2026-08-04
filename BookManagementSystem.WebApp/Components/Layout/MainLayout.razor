@@ -55,11 +55,12 @@
                             </div>
                         </div>
                         <MudDivider Class="my-1" />
-                        <MudMenuItem Href="/profile"
-                                     Icon="@Icons.Material.Filled.Person"
-                                     Class="pd-action pd-profile">
+                        <MudButton Href="/profile"
+                                   Variant="Variant.Text"
+                                   StartIcon="@Icons.Material.Filled.Person"
+                                   Class="pd-action pd-profile">
                             Profile
-                        </MudMenuItem>
+                        </MudButton>
                         <form method="post" action="/account/logout" class="pd-action-form">
                             <MudButton ButtonType="ButtonType.Submit"
                                        Variant="Variant.Text"
