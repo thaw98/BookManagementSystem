@@ -26,8 +26,6 @@
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="topbar-actions">
-                    @if (CanReceiveNotifications(auth.User))
-                    {
                     <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" PopoverClass="notification-menu-panel">
                         <ActivatorContent Context="bell">
                             <MudBadge Content="@BadgeText" Visible="@(NotificationClient.UnreadCount > 0)"
@@ -119,7 +117,6 @@
                             </div>
                         </ChildContent>
                     </MudMenu>
-                    }
                     <MudMenu AnchorOrigin="Origin.BottomRight"
                              TransformOrigin="Origin.TopRight"
                              PopoverClass="profile-menu-panel">
@@ -268,8 +265,6 @@
     }
     private async Task MarkAllNotificationsReadAsync() => await NotificationClient.MarkAllReadAsync();
     private string BadgeText => NotificationClient.UnreadCount > 99 ? "99+" : NotificationClient.UnreadCount.ToString();
-    private static bool CanReceiveNotifications(System.Security.Claims.ClaimsPrincipal user) =>
-        GetRole(user) is global::Shared.Constants.RoleNames.Librarian or global::Shared.Constants.RoleNames.LibraryMember;
     private static string NotificationIcon(string type) => type switch
     {
         "Borrowed" => Icons.Material.Outlined.MenuBook,

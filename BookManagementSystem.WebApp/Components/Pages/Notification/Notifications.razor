@@ -1,5 +1,5 @@
 @page "/notifications"
-@attribute [Authorize(Roles = "Librarian,Library Member")]
+@attribute [Authorize]
 @implements IDisposable
 @inject ApiClient Api
 @inject NotificationClient NotificationClient

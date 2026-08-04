@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Contracts.Notification;
 using Microsoft.AspNetCore.SignalR.Client;
-using Shared.Constants;
 
 namespace WebApp.Services;
 
@@ -23,8 +22,6 @@ public sealed class NotificationClient(
     public async Task InitializeAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
         if (_started || user.Identity?.IsAuthenticated != true) return;
-        var role = user.FindFirstValue(ClaimTypes.Role);
-        if (role is not (RoleNames.Librarian or RoleNames.LibraryMember)) return;
         _sessionId = user.FindFirstValue("sid");
         if (string.IsNullOrWhiteSpace(_sessionId)) return;
         _started = true;
