@@ -1,0 +1,28 @@
+.notifications-page { max-width: 920px; margin: 0 auto; }
+.notifications-page-header { align-items: center; }
+.notifications-panel { overflow: hidden; }
+.notifications-state { display: flex; min-height: 280px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; color: var(--text-secondary); text-align: center; }
+.notifications-empty .mud-icon-root { color: var(--text-muted); }
+.notifications-empty strong { color: var(--text); }
+.notification-history-item { display: flex; width: 100%; gap: 14px; padding: 18px 20px; border: 0; border-bottom: 1px solid var(--border); background: var(--surface); color: inherit; font: inherit; text-align: left; }
+.notification-history-item:not(:disabled) { cursor: pointer; }
+.notification-history-item--unread { background: #f8fbff; }
+.notification-history-item:not(:disabled):hover,
+.notification-history-item:not(:disabled):focus-visible { background: var(--primary-light); outline: none; }
+.notification-history-body { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 5px; }
+.notification-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); }
+.notification-unread-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: var(--primary); }
+.notification-history-message { color: var(--text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
+.notification-history-time { color: var(--text-muted); font-size: 0.78rem; }
+.notifications-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 18px; color: var(--text-secondary); font-size: 0.82rem; }
+.notifications-pagination select,
+.notifications-pagination button { min-height: 36px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.notifications-pagination select { padding: 0 28px 0 10px; }
+.notifications-pagination button { width: 36px; font-size: 1.3rem; cursor: pointer; }
+.notifications-pagination button:disabled { cursor: default; opacity: .45; }
+
+@media (max-width: 600px) {
+    .notifications-page-header { align-items: flex-start; }
+    .notification-history-item { gap: 11px; padding: 15px 14px; }
+    .notifications-pagination { flex-wrap: wrap; justify-content: center; padding: 12px; }
+}

@@ -48,6 +48,31 @@ public sealed class NotificationService(
         return Result<NotificationInboxDto>.Success(new() { UnreadCount = items.Count, Notifications = items });
     }
 
+    public async Task<Result<OffsetPagedResult<NotificationDto>>> GetPagedAsync(
+        OffsetPagedRequest request, CancellationToken cancellationToken)
+    {
+        if (baseService.UserId is not { } userId)
+            return Result<OffsetPagedResult<NotificationDto>>.Unauthorized();
+
+        var page = await Pagination.OffsetPagination.CreateAsync(
+            db.Notifications.AsNoTracking().Where(x => x.RecipientUserId == userId),
+            request,
+            source => source.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id),
+            x => new NotificationDto
+            {
+                Id = x.Id,
+                BorrowRecordId = x.BorrowRecordId,
+                Type = x.Type,
+                Title = x.Title,
+                Message = x.Message,
+                CreatedAt = x.CreatedAt,
+                ReadAt = x.ReadAt
+            },
+            cancellationToken);
+
+        return Result<OffsetPagedResult<NotificationDto>>.Success(page);
+    }
+
     public async Task<Result<int>> MarkReadAsync(long notificationId, CancellationToken cancellationToken)
     {
         if (baseService.UserId is not { } userId) return Result<int>.Unauthorized();

@@ -36,6 +36,8 @@ public sealed class NotificationTests
         Assert.Equal("Borrowed", notification.Type);
         Assert.Contains(member.FullName, notification.Message);
         Assert.Contains(book.Title, notification.Message);
+        Assert.Contains(NotificationDateTime.Format(result.Data!.DueAt), notification.Message);
+        Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", notification.Message);
         Assert.All(f.Dispatcher.Delivered, x => Assert.True(x.Notification.Id > 0));
 
         var rejected = await service.BorrowBookAsync(member.Id, new BorrowBookRequest { BookId = 0 }, default);
@@ -60,7 +62,7 @@ public sealed class NotificationTests
         Assert.True(returned.IsSuccess);
         Assert.Contains(book.Title, row.Message);
         Assert.Contains("Available copies: 3 of 3", row.Message);
-        Assert.Contains(returned.Data!.ReturnedAt.ToString("O"), row.Message);
+        Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", row.Message);
         var count = await f.Db.Notifications.CountAsync();
         Assert.False((await service.ReturnBookAsync(member.Id, borrowed.Data.BorrowRecordId, default)).IsSuccess);
         Assert.Equal(count, await f.Db.Notifications.CountAsync());
@@ -111,6 +113,64 @@ public sealed class NotificationTests
         Assert.DoesNotContain(rows, x => x.Message.Contains("Returned"));
         Assert.Equal(3, rows.Count);
         Assert.Equal(3, f.Dispatcher.Delivered.Count);
+        Assert.Contains(rows, x => x.Type == "DueSoon" &&
+            x.Message.Contains("04/08/2026 10:30 PM") &&
+            !System.Text.RegularExpressions.Regex.IsMatch(x.Message, @"\d{4}-\d{2}-\d{2}T"));
+        Assert.All(rows.Where(x => x.Type == "Overdue"), x =>
+        {
+            Assert.Contains("04/08/2026 10:29 AM", x.Message);
+            Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", x.Message);
+        });
+    }
+
+    [Fact]
+    public async Task Paged_history_is_recipient_scoped_includes_read_state_and_has_stable_ordering()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var first = f.User("First", RoleNames.LibraryMember, true);
+        var second = f.User("Second", RoleNames.LibraryMember, true);
+        var record = f.Record(first, f.Book("History", 1), DateTime.UtcNow.AddDays(1));
+        await f.Db.SaveChangesAsync();
+        var readAt = DateTime.UtcNow;
+        var firstItems = new[]
+        {
+            new Notification { RecipientUserId = first.Id, BorrowRecordId = record.Id, Type = "One", Title = "One", Message = "One" },
+            new Notification { RecipientUserId = first.Id, BorrowRecordId = record.Id, Type = "Two", Title = "Two", Message = "Two", ReadAt = readAt },
+            new Notification { RecipientUserId = first.Id, BorrowRecordId = record.Id, Type = "Three", Title = "Three", Message = "Three" },
+            new Notification { RecipientUserId = first.Id, BorrowRecordId = record.Id, Type = "Four", Title = "Four", Message = "Four" }
+        };
+        var other = new Notification
+        {
+            RecipientUserId = second.Id, BorrowRecordId = record.Id, Type = "Other",
+            Title = "Other user", Message = "Must not be exposed"
+        };
+        f.Db.Notifications.AddRange(firstItems);
+        f.Db.Notifications.Add(other);
+        await f.Db.SaveChangesAsync();
+
+        var older = new DateTime(2026, 8, 3, 0, 0, 0, DateTimeKind.Utc);
+        var newer = older.AddDays(1);
+        await f.Db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE Notifications SET CreatedAt = {older} WHERE Id IN ({firstItems[0].Id}, {firstItems[3].Id})");
+        await f.Db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE Notifications SET CreatedAt = {newer} WHERE Id IN ({firstItems[1].Id}, {firstItems[2].Id}, {other.Id})");
+
+        f.Base.UserIdValue = first.Id;
+        var service = f.NotificationService();
+        var firstPage = await service.GetPagedAsync(new() { Page = 1, PageSize = 2 }, default);
+        var secondPage = await service.GetPagedAsync(new() { Page = 2, PageSize = 2 }, default);
+
+        Assert.True(firstPage.IsSuccess);
+        Assert.Equal(4, firstPage.Data!.TotalCount);
+        Assert.Equal(1, firstPage.Data.Page);
+        Assert.Equal(2, firstPage.Data.PageSize);
+        Assert.Equal(2, firstPage.Data.TotalPages);
+        Assert.Equal(new[] { firstItems[2].Id, firstItems[1].Id }, firstPage.Data.Items.Select(x => x.Id));
+        Assert.Contains(firstPage.Data.Items, x => x.ReadAt is null);
+        Assert.Contains(firstPage.Data.Items, x => x.ReadAt is not null);
+        Assert.Equal(2, secondPage.Data!.Page);
+        Assert.Equal(new[] { firstItems[3].Id, firstItems[0].Id }, secondPage.Data.Items.Select(x => x.Id));
+        Assert.DoesNotContain(firstPage.Data.Items.Concat(secondPage.Data.Items), x => x.Id == other.Id);
     }
 
     [Fact]

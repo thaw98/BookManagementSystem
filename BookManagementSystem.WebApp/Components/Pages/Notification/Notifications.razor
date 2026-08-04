@@ -1,0 +1,190 @@
+@page "/notifications"
+@attribute [Authorize(Roles = "Librarian,Library Member")]
+@implements IDisposable
+@inject ApiClient Api
+@inject NotificationClient NotificationClient
+
+<PageTitle>Notifications — BMS</PageTitle>
+
+<section class="notifications-page" aria-labelledby="notifications-heading">
+    <div class="page-header notifications-page-header">
+        <div>
+            <h1 id="notifications-heading" class="page-title">Notifications</h1>
+            <p class="page-subtitle">View your notification history</p>
+        </div>
+        @if (NotificationClient.UnreadCount > 0)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.DoneAll"
+                       Disabled="@_isMutating" OnClick="MarkAllReadAsync"
+                       aria-label="Mark all notifications as read">
+                Mark all read
+            </MudButton>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_error</MudAlert>
+    }
+
+    <MudPaper Class="bms-panel notifications-panel" Elevation="0"
+              aria-busy="@_isLoading.ToString().ToLowerInvariant()">
+        @if (_isLoading)
+        {
+            <div class="notifications-state" role="status">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                <span>Loading notifications…</span>
+            </div>
+        }
+        else if (_items.Count == 0)
+        {
+            <div class="notifications-state notifications-empty">
+                <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone" Size="Size.Large" />
+                <strong>No notifications yet</strong>
+                <span>You have not received any notifications yet.</span>
+            </div>
+        }
+        else
+        {
+            <div class="notifications-history" aria-label="Notification history">
+                @foreach (var item in _items)
+                {
+                    <button type="button" class="@ItemClass(item)"
+                            disabled="@(_isMutating || item.ReadAt is not null)"
+                            @onclick="() => MarkReadAsync(item)"
+                            aria-label="@ItemAriaLabel(item)">
+                        <span class="@($"notification-item-icon notification-item-icon--{item.Type.ToLowerInvariant()}")">
+                            <MudIcon Icon="@NotificationIcon(item.Type)" Size="Size.Small" />
+                        </span>
+                        <span class="notification-history-body">
+                            <span class="notification-history-heading">
+                                <strong>@item.Title</strong>
+                                @if (item.ReadAt is null)
+                                {
+                                    <span class="notification-unread-dot" aria-label="Unread"></span>
+                                }
+                            </span>
+                            <span class="notification-history-message">@item.Message</span>
+                            <time class="notification-history-time">@NotificationDateTime.Format(item.CreatedAt)</time>
+                        </span>
+                    </button>
+                }
+            </div>
+
+            <div class="notifications-pagination" aria-label="Notification history pagination">
+                <label for="notification-page-size">Items per page</label>
+                <select id="notification-page-size" value="@_pageSize" @onchange="ChangePageSizeAsync">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+                <span>Page @_page of @_totalPages</span>
+                <button type="button" disabled="@(_page <= 1 || _isLoading)"
+                        @onclick="PreviousPageAsync" aria-label="Previous page">‹</button>
+                <button type="button" disabled="@(_page >= _totalPages || _isLoading)"
+                        @onclick="NextPageAsync" aria-label="Next page">›</button>
+            </div>
+        }
+    </MudPaper>
+</section>
+
+@code {
+    private List<NotificationDto> _items = [];
+    private int _page = 1;
+    private int _pageSize = 10;
+    private int _totalPages = 1;
+    private bool _isLoading = true;
+    private bool _isMutating;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NotificationClient.StateChanged += OnNotificationStateChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            var result = await Api.GetAsync<OffsetPagedResult<NotificationDto>>(
+                $"api/Notification/paged?page={_page}&pageSize={_pageSize}");
+            if (!result.IsSuccess || result.Data is null)
+            {
+                _error = string.IsNullOrWhiteSpace(result.Message)
+                    ? "Notification history could not be loaded."
+                    : result.Message;
+                return;
+            }
+
+            _items = result.Data.Items;
+            _page = result.Data.Page;
+            _pageSize = result.Data.PageSize;
+            _totalPages = Math.Max(1, result.Data.TotalPages);
+        }
+        catch
+        {
+            _error = "Notification history could not be loaded. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task MarkReadAsync(NotificationDto item)
+    {
+        if (item.ReadAt is not null || _isMutating) return;
+        _isMutating = true;
+        _error = null;
+        var succeeded = await NotificationClient.MarkReadAsync(item.Id);
+        if (succeeded) item.ReadAt = DateTime.UtcNow;
+        else _error = "The notification could not be marked as read. Please try again.";
+        _isMutating = false;
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        if (_isMutating || NotificationClient.UnreadCount == 0) return;
+        _isMutating = true;
+        _error = null;
+        var succeeded = await NotificationClient.MarkAllReadAsync();
+        if (succeeded)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var item in _items.Where(x => x.ReadAt is null)) item.ReadAt = now;
+        }
+        else _error = "Notifications could not be marked as read. Please try again.";
+        _isMutating = false;
+    }
+
+    private async Task ChangePageSizeAsync(ChangeEventArgs args)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out var size)) return;
+        _pageSize = size;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync() { if (_page > 1) { _page--; await LoadAsync(); } }
+    private async Task NextPageAsync() { if (_page < _totalPages) { _page++; await LoadAsync(); } }
+    private void OnNotificationStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private static string ItemClass(NotificationDto item) =>
+        item.ReadAt is null ? "notification-history-item notification-history-item--unread" : "notification-history-item";
+    private static string ItemAriaLabel(NotificationDto item) =>
+        $"{(item.ReadAt is null ? "Unread" : "Read")} notification: {item.Title}. {item.Message}";
+    private static string NotificationIcon(string type) => type switch
+    {
+        "Borrowed" => Icons.Material.Outlined.MenuBook,
+        "Returned" => Icons.Material.Outlined.AssignmentReturned,
+        "DueSoon" => Icons.Material.Outlined.Schedule,
+        "Overdue" => Icons.Material.Outlined.WarningAmber,
+        _ => Icons.Material.Outlined.Notifications
+    };
+
+    public void Dispose() => NotificationClient.StateChanged -= OnNotificationStateChanged;
+}

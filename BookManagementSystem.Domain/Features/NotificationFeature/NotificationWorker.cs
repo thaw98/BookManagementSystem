@@ -1,3 +1,4 @@
+using Contracts.Notification;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,17 +48,17 @@ public sealed class NotificationScanner(
 
         foreach (var record in records)
         {
-            var due = DateTime.SpecifyKind(record.DueAt, DateTimeKind.Utc).ToString("O");
+            var due = NotificationDateTime.Format(record.DueAt);
             if (record.DueAt > now)
             {
-                Add(record.UserId, record.Id, "DueSoon", "Book due soon", $"\"{record.BookTitle}\" is due at {due}.");
+                Add(record.UserId, record.Id, "DueSoon", "Book due soon", $"“{record.BookTitle}” is due on {due}.");
                 continue;
             }
             Add(record.UserId, record.Id, "Overdue", "Book overdue",
-                $"\"{record.BookTitle}\" was due at {due}. Please return it as soon as possible.");
+                $"“{record.BookTitle}” was due on {due}. Please return it as soon as possible.");
             foreach (var librarianId in librarians)
                 Add(librarianId, record.Id, "Overdue", "Book overdue",
-                    $"{record.MemberName} has not returned \"{record.BookTitle}\". It was due at {due}.");
+                    $"{record.MemberName} has not returned “{record.BookTitle}”. Due: {due}.");
         }
 
         if (added.Count == 0) return 0;

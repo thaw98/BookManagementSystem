@@ -578,6 +578,30 @@ button, input, select, textarea {
     line-height: 1.3;
 }
 
+.notification-footer {
+    padding: 6px;
+}
+
+.notification-view-all {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    color: var(--primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.notification-view-all:hover,
+.notification-view-all:focus-visible {
+    background: var(--primary-light);
+    outline: none;
+}
+
 /* ===== Profile trigger ===== */
 .profile-trigger.mud-button-root {
     text-transform: none !important;

@@ -4,6 +4,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NotificationClient NotificationClient
 @using Microsoft.AspNetCore.Components.Routing
+@using Contracts.Notification
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -34,7 +35,7 @@
                                 <MudIconButton Icon="@Icons.Material.Outlined.Notifications"
                                                Color="Color.Inherit"
                                                Class="notification-trigger"
-                                               OnClick="@bell.ToggleAsync"
+                                               OnClick="@((MouseEventArgs e) => bell.ToggleAsync(e))"
                                                aria-label="@($"Notifications, {NotificationClient.UnreadCount} unread")" />
                             </MudBadge>
                         </ActivatorContent>
@@ -52,7 +53,7 @@
                                     <MudButton Size="Size.Small"
                                                Variant="Variant.Text"
                                                Class="notification-mark-all"
-                                               OnClick="NotificationClient.MarkAllReadAsync">
+                                               OnClick="MarkAllNotificationsReadAsync">
                                         Mark all read
                                     </MudButton>
                                 }
@@ -71,22 +72,29 @@
                                 }
                                 else
                                 {
-                                    @foreach (var item in NotificationClient.Notifications.Take(20))
+                                    @foreach (var item in NotificationClient.Notifications.Take(5))
                                     {
                                         <button type="button"
                                                 class="notification-item"
-                                                @onclick="() => NotificationClient.MarkReadAsync(item.Id)">
+                                                @onclick="() => MarkNotificationReadAsync(item.Id)">
                                             <span class="@($"notification-item-icon notification-item-icon--{item.Type.ToLowerInvariant()}")">
                                                 <MudIcon Icon="@NotificationIcon(item.Type)" Size="Size.Small" />
                                             </span>
                                             <span class="notification-item-body">
                                                 <strong class="notification-item-title">@item.Title</strong>
                                                 <span class="notification-item-message">@item.Message</span>
-                                                <time class="notification-item-time">@item.CreatedAt.ToLocalTime().ToString("g")</time>
+                                                <time class="notification-item-time">@NotificationDateTime.Format(item.CreatedAt)</time>
                                             </span>
                                         </button>
                                     }
                                 }
+                            </div>
+                            <MudDivider Class="notification-divider" />
+                            <div class="notification-footer">
+                                <a href="/notifications" class="notification-view-all" aria-label="View all notifications">
+                                    View All
+                                    <MudIcon Icon="@Icons.Material.Outlined.ArrowForward" Size="Size.Small" />
+                                </a>
                             </div>
                         </ChildContent>
                     </MudMenu>
@@ -97,7 +105,7 @@
                     <ActivatorContent Context="context">
                         <MudButton Variant="Variant.Text"
                                    Class="profile-trigger"
-                                   OnClick="@context.ToggleAsync"
+                                   OnClick="@((MouseEventArgs e) => context.ToggleAsync(e))"
                                    aria-label="Open profile menu">
                             <MudAvatar Size="Size.Small" Color="Color.Primary">
                                 @GetInitial(auth.User)
@@ -233,6 +241,8 @@
     }
 
     private void OnNotificationStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private async Task MarkNotificationReadAsync(long id) => await NotificationClient.MarkReadAsync(id);
+    private async Task MarkAllNotificationsReadAsync() => await NotificationClient.MarkAllReadAsync();
     private string BadgeText => NotificationClient.UnreadCount > 99 ? "99+" : NotificationClient.UnreadCount.ToString();
     private static bool CanReceiveNotifications(System.Security.Claims.ClaimsPrincipal user) =>
         GetRole(user) is global::Shared.Constants.RoleNames.Librarian or global::Shared.Constants.RoleNames.LibraryMember;
@@ -265,6 +275,7 @@
             "books" => "Books",
             "authors" => "Authors",
             "categories" => "Categories",
+            "notifications" => "Notifications",
             _ => "BMS"
         };
     }

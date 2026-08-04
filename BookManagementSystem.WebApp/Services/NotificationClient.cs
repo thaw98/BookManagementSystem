@@ -58,27 +58,37 @@ public sealed class NotificationClient(
         catch (Exception ex) { logger.LogWarning(ex, "Unread notifications could not be reloaded."); }
     }
 
-    public async Task MarkReadAsync(long id)
+    public async Task<bool> MarkReadAsync(long id)
     {
         try
         {
             var result = await api.PutAsync<int>($"api/Notification/{id}/read", null);
-            if (!result.IsSuccess) return;
+            if (!result.IsSuccess) return false;
             _items.Remove(id); UnreadCount = result.Data;
             StateChanged?.Invoke();
+            return true;
         }
-        catch (Exception ex) { logger.LogWarning(ex, "Notification {NotificationId} could not be marked read.", id); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Notification {NotificationId} could not be marked read.", id);
+            return false;
+        }
     }
 
-    public async Task MarkAllReadAsync()
+    public async Task<bool> MarkAllReadAsync()
     {
         try
         {
             var result = await api.PutAsync<int>("api/Notification/read-all", null);
-            if (!result.IsSuccess) return;
+            if (!result.IsSuccess) return false;
             _items.Clear(); UnreadCount = result.Data; StateChanged?.Invoke();
+            return true;
         }
-        catch (Exception ex) { logger.LogWarning(ex, "Notifications could not be marked read."); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Notifications could not be marked read.");
+            return false;
+        }
     }
 
     private void Receive(NotificationDto item)

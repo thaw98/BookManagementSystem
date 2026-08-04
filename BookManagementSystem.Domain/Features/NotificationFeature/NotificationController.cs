@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Shared.Base;
+using Shared.Models;
 
 namespace BookManagementSystem.Domain.Features.NotificationFeature;
 
@@ -8,6 +9,11 @@ public sealed class NotificationController(INotificationService service) : BaseC
     [HttpGet("unread")]
     public async Task<IActionResult> Unread(CancellationToken cancellationToken) =>
         Execute(await service.GetUnreadAsync(cancellationToken));
+
+    [HttpGet("paged")]
+    public async Task<IActionResult> Paged(
+        [FromQuery] OffsetPagedRequest request, CancellationToken cancellationToken) =>
+        Execute(await service.GetPagedAsync(request, cancellationToken));
 
     [HttpPut("{notificationId:long}/read")]
     public async Task<IActionResult> Read(long notificationId, CancellationToken cancellationToken) =>

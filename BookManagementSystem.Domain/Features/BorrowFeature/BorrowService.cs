@@ -1,4 +1,5 @@
 ﻿using Contracts.Borrow;
+using Contracts.Notification;
 using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -101,7 +102,7 @@ public sealed class BorrowService(
 
         var borrowNotifications = await notificationService.AddLibrarianNotificationsAsync(
             borrowRecord, "Borrowed", "Book borrowed",
-            $"{member.FullName} borrowed \"{book.Title}\" at {now:O}. Due at {borrowRecord.DueAt:O}.",
+            $"{member.FullName} borrowed “{book.Title}”. Due: {NotificationDateTime.Format(borrowRecord.DueAt)}.",
             cancellationToken);
 
         await db.SaveChangesAsync(cancellationToken);
@@ -166,7 +167,7 @@ public sealed class BorrowService(
 
         var returnNotifications = await notificationService.AddLibrarianNotificationsAsync(
             borrowRecord, "Returned", "Book returned",
-            $"{borrowRecord.User.FullName} returned \"{borrowRecord.Book.Title}\" at {returnedAt:O}. " +
+            $"{borrowRecord.User.FullName} returned “{borrowRecord.Book.Title}”. " +
             $"Available copies: {borrowRecord.Book.AvailableCopies} of {borrowRecord.Book.TotalCopies}.",
             cancellationToken);
 
