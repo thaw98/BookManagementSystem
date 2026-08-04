@@ -48,6 +48,35 @@ public sealed class NotificationService(
         return Result<NotificationInboxDto>.Success(new() { UnreadCount = items.Count, Notifications = items });
     }
 
+    public async Task<Result<NotificationInboxDto>> GetInboxAsync(CancellationToken cancellationToken)
+    {
+        if (baseService.UserId is not { } userId) return Result<NotificationInboxDto>.Unauthorized();
+
+        var recipientNotifications = db.Notifications.AsNoTracking()
+            .Where(x => x.RecipientUserId == userId);
+        var unreadCount = await recipientNotifications.CountAsync(x => x.ReadAt == null, cancellationToken);
+        var items = await recipientNotifications
+            .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+            .Take(5)
+            .Select(x => new NotificationDto
+            {
+                Id = x.Id,
+                BorrowRecordId = x.BorrowRecordId,
+                Type = x.Type,
+                Title = x.Title,
+                Message = x.Message,
+                CreatedAt = x.CreatedAt,
+                ReadAt = x.ReadAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return Result<NotificationInboxDto>.Success(new()
+        {
+            UnreadCount = unreadCount,
+            Notifications = items
+        });
+    }
+
     public async Task<Result<OffsetPagedResult<NotificationDto>>> GetPagedAsync(
         OffsetPagedRequest request, CancellationToken cancellationToken)
     {

@@ -66,26 +66,47 @@
                                         <div class="notification-empty-icon">
                                             <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone" Size="Size.Medium" />
                                         </div>
-                                        <p class="notification-empty-title">You're all caught up</p>
-                                        <p class="notification-empty-text">No unread notifications right now</p>
+                                        <p class="notification-empty-title">No notifications yet</p>
+                                        <p class="notification-empty-text">Your notification history will appear here.</p>
                                     </div>
                                 }
                                 else
                                 {
                                     @foreach (var item in NotificationClient.Notifications.Take(5))
                                     {
-                                        <button type="button"
-                                                class="notification-item"
-                                                @onclick="() => MarkNotificationReadAsync(item.Id)">
-                                            <span class="@($"notification-item-icon notification-item-icon--{item.Type.ToLowerInvariant()}")">
-                                                <MudIcon Icon="@NotificationIcon(item.Type)" Size="Size.Small" />
-                                            </span>
-                                            <span class="notification-item-body">
-                                                <strong class="notification-item-title">@item.Title</strong>
-                                                <span class="notification-item-message">@item.Message</span>
-                                                <time class="notification-item-time">@NotificationDateTime.Format(item.CreatedAt)</time>
-                                            </span>
-                                        </button>
+                                        @if (item.ReadAt is null)
+                                        {
+                                            <button type="button"
+                                                    class="notification-item notification-item--unread"
+                                                    @onclick="() => MarkNotificationReadAsync(item)"
+                                                    aria-label="@($"Unread notification: {item.Title}. Mark as read")">
+                                                <span class="@($"notification-item-icon notification-item-icon--{item.Type.ToLowerInvariant()}")">
+                                                    <MudIcon Icon="@NotificationIcon(item.Type)" Size="Size.Small" />
+                                                </span>
+                                                <span class="notification-item-body">
+                                                    <span class="notification-item-heading">
+                                                        <strong class="notification-item-title">@item.Title</strong>
+                                                        <span class="notification-item-unread-dot" aria-hidden="true"></span>
+                                                    </span>
+                                                    <span class="notification-item-message">@item.Message</span>
+                                                    <time class="notification-item-time">@NotificationDateTime.Format(item.CreatedAt)</time>
+                                                </span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <div class="notification-item notification-item--read">
+                                                <span class="@($"notification-item-icon notification-item-icon--{item.Type.ToLowerInvariant()}")">
+                                                    <MudIcon Icon="@NotificationIcon(item.Type)" Size="Size.Small" />
+                                                </span>
+                                                <span class="notification-item-body">
+                                                    <span class="visually-hidden">Read notification.</span>
+                                                    <strong class="notification-item-title">@item.Title</strong>
+                                                    <span class="notification-item-message">@item.Message</span>
+                                                    <time class="notification-item-time">@NotificationDateTime.Format(item.CreatedAt)</time>
+                                                </span>
+                                            </div>
+                                        }
                                     }
                                 }
                             </div>
@@ -241,7 +262,10 @@
     }
 
     private void OnNotificationStateChanged() => _ = InvokeAsync(StateHasChanged);
-    private async Task MarkNotificationReadAsync(long id) => await NotificationClient.MarkReadAsync(id);
+    private async Task MarkNotificationReadAsync(NotificationDto item)
+    {
+        if (item.ReadAt is null) await NotificationClient.MarkReadAsync(item.Id);
+    }
     private async Task MarkAllNotificationsReadAsync() => await NotificationClient.MarkAllReadAsync();
     private string BadgeText => NotificationClient.UnreadCount > 99 ? "99+" : NotificationClient.UnreadCount.ToString();
     private static bool CanReceiveNotifications(System.Security.Claims.ClaimsPrincipal user) =>

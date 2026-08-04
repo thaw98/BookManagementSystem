@@ -174,6 +174,54 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task Inbox_includes_read_and_unread_returns_five_newest_for_recipient_and_counts_all_unread()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var recipient = f.User("Inbox recipient", RoleNames.LibraryMember, true);
+        var otherUser = f.User("Other recipient", RoleNames.LibraryMember, true);
+        var record = f.Record(recipient, f.Book("Inbox ordering", 1), DateTime.UtcNow.AddDays(1));
+        await f.Db.SaveChangesAsync();
+        var readAt = new DateTime(2026, 8, 4, 1, 0, 0, DateTimeKind.Utc);
+        var recipientItems = Enumerable.Range(0, 7).Select(index => new Notification
+        {
+            RecipientUserId = recipient.Id,
+            BorrowRecordId = record.Id,
+            Type = $"Inbox{index}",
+            Title = $"Notification {index}",
+            Message = $"Message {index}",
+            ReadAt = index % 2 == 1 ? readAt : null
+        }).ToArray();
+        var otherItem = new Notification
+        {
+            RecipientUserId = otherUser.Id,
+            BorrowRecordId = record.Id,
+            Type = "OtherInbox",
+            Title = "Other user's notification",
+            Message = "Must not be exposed"
+        };
+        f.Db.Notifications.AddRange(recipientItems);
+        f.Db.Notifications.Add(otherItem);
+        await f.Db.SaveChangesAsync();
+
+        var sameCreatedAt = new DateTime(2026, 8, 4, 2, 0, 0, DateTimeKind.Utc);
+        await f.Db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE Notifications SET CreatedAt = {sameCreatedAt} WHERE RecipientUserId = {recipient.Id}");
+
+        f.Base.UserIdValue = recipient.Id;
+        var result = await f.NotificationService().GetInboxAsync(default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(4, result.Data!.UnreadCount);
+        Assert.Equal(5, result.Data.Notifications.Count);
+        Assert.Equal(recipientItems.Reverse().Take(5).Select(x => x.Id),
+            result.Data.Notifications.Select(x => x.Id));
+        Assert.Contains(result.Data.Notifications, x => x.ReadAt is null);
+        Assert.Contains(result.Data.Notifications, x => x.ReadAt is not null);
+        Assert.DoesNotContain(result.Data.Notifications, x => x.Id == otherItem.Id);
+        Assert.DoesNotContain(result.Data.Notifications, x => x.Id == recipientItems[0].Id);
+    }
+
+    [Fact]
     public async Task Read_operations_are_owner_scoped_idempotent_and_not_audited()
     {
         await using var f = await Fixture.CreateAsync();

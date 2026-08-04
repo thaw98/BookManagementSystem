@@ -48,14 +48,14 @@ public sealed class NotificationClient(
     {
         try
         {
-            var result = await api.GetAsync<NotificationInboxDto>("api/Notification/unread", cancellationToken);
+            var result = await api.GetAsync<NotificationInboxDto>("api/Notification/inbox", cancellationToken);
             if (!result.IsSuccess || result.Data is null) return;
             _items.Clear();
             foreach (var item in result.Data.Notifications) _items[item.Id] = item;
             UnreadCount = result.Data.UnreadCount;
             StateChanged?.Invoke();
         }
-        catch (Exception ex) { logger.LogWarning(ex, "Unread notifications could not be reloaded."); }
+        catch (Exception ex) { logger.LogWarning(ex, "Notification inbox could not be reloaded."); }
     }
 
     public async Task<bool> MarkReadAsync(long id)
@@ -64,7 +64,9 @@ public sealed class NotificationClient(
         {
             var result = await api.PutAsync<int>($"api/Notification/{id}/read", null);
             if (!result.IsSuccess) return false;
-            _items.Remove(id); UnreadCount = result.Data;
+            if (_items.TryGetValue(id, out var item) && item.ReadAt is null)
+                item.ReadAt = DateTime.UtcNow;
+            UnreadCount = result.Data;
             StateChanged?.Invoke();
             return true;
         }
@@ -81,7 +83,10 @@ public sealed class NotificationClient(
         {
             var result = await api.PutAsync<int>("api/Notification/read-all", null);
             if (!result.IsSuccess) return false;
-            _items.Clear(); UnreadCount = result.Data; StateChanged?.Invoke();
+            var readAt = DateTime.UtcNow;
+            foreach (var item in _items.Values.Where(x => x.ReadAt is null)) item.ReadAt = readAt;
+            UnreadCount = result.Data;
+            StateChanged?.Invoke();
             return true;
         }
         catch (Exception ex)
@@ -93,6 +98,7 @@ public sealed class NotificationClient(
 
     private void Receive(NotificationDto item)
     {
+        item.ReadAt = null;
         if (_items.TryAdd(item.Id, item)) UnreadCount++;
         StateChanged?.Invoke();
     }

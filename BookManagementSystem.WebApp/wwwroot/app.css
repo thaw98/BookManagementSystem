@@ -509,7 +509,6 @@ button, input, select, textarea {
     background: var(--surface);
     color: inherit;
     text-align: left;
-    cursor: pointer;
     transition: background 140ms;
 }
 
@@ -517,8 +516,31 @@ button, input, select, textarea {
     border-bottom: 0;
 }
 
-.notification-item:hover {
+.notification-item--unread {
+    background: #f5f9ff;
+}
+
+button.notification-item {
+    cursor: pointer;
+}
+
+button.notification-item:hover {
     background: #f8fafc;
+}
+
+button.notification-item--unread:hover {
+    background: #edf5ff;
+}
+
+button.notification-item:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+}
+
+.notification-item--read {
+    cursor: default;
 }
 
 .notification-item-icon {
@@ -576,6 +598,21 @@ button, input, select, textarea {
     font-size: 0.72rem;
     color: var(--text-muted);
     line-height: 1.3;
+}
+
+.notification-item-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.notification-item-unread-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--primary);
 }
 
 .notification-footer {

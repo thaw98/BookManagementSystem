@@ -10,6 +10,10 @@ public sealed class NotificationController(INotificationService service) : BaseC
     public async Task<IActionResult> Unread(CancellationToken cancellationToken) =>
         Execute(await service.GetUnreadAsync(cancellationToken));
 
+    [HttpGet("inbox")]
+    public async Task<IActionResult> Inbox(CancellationToken cancellationToken) =>
+        Execute(await service.GetInboxAsync(cancellationToken));
+
     [HttpGet("paged")]
     public async Task<IActionResult> Paged(
         [FromQuery] OffsetPagedRequest request, CancellationToken cancellationToken) =>

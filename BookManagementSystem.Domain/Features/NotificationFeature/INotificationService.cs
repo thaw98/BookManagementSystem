@@ -10,6 +10,7 @@ public interface INotificationService
         string title, string message, CancellationToken cancellationToken);
     Task DispatchAsync(IEnumerable<Notification> notifications, CancellationToken cancellationToken);
     Task<Result<NotificationInboxDto>> GetUnreadAsync(CancellationToken cancellationToken);
+    Task<Result<NotificationInboxDto>> GetInboxAsync(CancellationToken cancellationToken);
     Task<Result<OffsetPagedResult<NotificationDto>>> GetPagedAsync(
         OffsetPagedRequest request, CancellationToken cancellationToken);
     Task<Result<int>> MarkReadAsync(long notificationId, CancellationToken cancellationToken);
