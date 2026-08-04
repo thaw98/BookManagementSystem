@@ -61,6 +61,7 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
             x => new UserListDto
             {
                 Id = x.Id,
+                FullName = x.FullName,
                 Email = x.Email,
                 RoleId = x.RoleId,
                 RoleName = x.Role.Name,
@@ -226,6 +227,8 @@ public sealed class UserService(AppDbContext db, IPasswordHasher passwordHasher,
         UserFilterRequest request) =>
         (request.SortBy, request.SortDescending) switch
         {
+            ("fullName", true) => query.OrderByDescending(x => x.FullName).ThenBy(x => x.Id),
+            ("fullName", false) => query.OrderBy(x => x.FullName).ThenBy(x => x.Id),
             ("email", true) => query.OrderByDescending(x => x.Email).ThenBy(x => x.Id),
             ("email", false) => query.OrderBy(x => x.Email).ThenBy(x => x.Id),
             ("role", true) => query.OrderByDescending(x => x.Role.Name).ThenBy(x => x.Id),

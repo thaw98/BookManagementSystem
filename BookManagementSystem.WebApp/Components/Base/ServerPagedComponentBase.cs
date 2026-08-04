@@ -34,6 +34,7 @@ public abstract class ServerPagedComponentBase<TItem> : ComponentBase
     {
         var requestVersion = Interlocked.Increment(ref _requestVersion);
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
 
         try
         {
@@ -69,7 +70,10 @@ public abstract class ServerPagedComponentBase<TItem> : ComponentBase
         finally
         {
             if (requestVersion == Volatile.Read(ref _requestVersion))
+            {
                 IsLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
         }
     }
 
