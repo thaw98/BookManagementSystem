@@ -3,11 +3,13 @@ using Database.AppDbContextModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 using Shared.Models;
+using BookManagementSystem.Domain.Features.NotificationFeature;
 
 namespace BookManagementSystem.Domain.Features.BorrowFeature;
 
 public sealed class BorrowService(
-    AppDbContext db) : IBorrowService
+    AppDbContext db,
+    INotificationService notificationService) : IBorrowService
 {
     private const int MaxBorrowBooks = 5;
     private const int BorrowDays = 2;
@@ -97,7 +99,13 @@ public sealed class BorrowService(
 
         book.AvailableCopies--;
 
+        var borrowNotifications = await notificationService.AddLibrarianNotificationsAsync(
+            borrowRecord, "Borrowed", "Book borrowed",
+            $"{member.FullName} borrowed \"{book.Title}\" at {now:O}. Due at {borrowRecord.DueAt:O}.",
+            cancellationToken);
+
         await db.SaveChangesAsync(cancellationToken);
+        await notificationService.DispatchAsync(borrowNotifications, cancellationToken);
 
         var result = new BorrowResultDto
         {
@@ -127,6 +135,7 @@ public sealed class BorrowService(
 
         var borrowRecord = await db.BookBorrowRecords
             .Include(x => x.Book)
+            .Include(x => x.User)
             .FirstOrDefaultAsync(
                 x =>
                     x.Id == borrowRecordId &&
@@ -155,7 +164,14 @@ public sealed class BorrowService(
             borrowRecord.Book.AvailableCopies++;
         }
 
+        var returnNotifications = await notificationService.AddLibrarianNotificationsAsync(
+            borrowRecord, "Returned", "Book returned",
+            $"{borrowRecord.User.FullName} returned \"{borrowRecord.Book.Title}\" at {returnedAt:O}. " +
+            $"Available copies: {borrowRecord.Book.AvailableCopies} of {borrowRecord.Book.TotalCopies}.",
+            cancellationToken);
+
         await db.SaveChangesAsync(cancellationToken);
+        await notificationService.DispatchAsync(returnNotifications, cancellationToken);
 
         var result = new ReturnResultDto
         {

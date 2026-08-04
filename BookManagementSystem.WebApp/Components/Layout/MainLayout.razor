@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
-@implements IDisposable
+@implements IAsyncDisposable
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NotificationClient NotificationClient
 @using Microsoft.AspNetCore.Components.Routing
 
 <MudThemeProvider Theme="_theme" />
@@ -23,6 +25,72 @@
         <AuthorizeView>
             <Authorized Context="auth">
                 <div class="topbar-actions">
+                    @if (CanReceiveNotifications(auth.User))
+                    {
+                    <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" PopoverClass="notification-menu-panel">
+                        <ActivatorContent Context="bell">
+                            <MudBadge Content="@BadgeText" Visible="@(NotificationClient.UnreadCount > 0)"
+                                      Color="Color.Error" Overlap="true" Bordered="true" Class="notification-badge">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Notifications"
+                                               Color="Color.Inherit"
+                                               Class="notification-trigger"
+                                               OnClick="@bell.ToggleAsync"
+                                               aria-label="@($"Notifications, {NotificationClient.UnreadCount} unread")" />
+                            </MudBadge>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <div class="notification-header">
+                                <div class="notification-heading">
+                                    <span class="notification-title">Notifications</span>
+                                    @if (NotificationClient.UnreadCount > 0)
+                                    {
+                                        <span class="notification-count">@NotificationClient.UnreadCount new</span>
+                                    }
+                                </div>
+                                @if (NotificationClient.UnreadCount > 0)
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Class="notification-mark-all"
+                                               OnClick="NotificationClient.MarkAllReadAsync">
+                                        Mark all read
+                                    </MudButton>
+                                }
+                            </div>
+                            <MudDivider Class="notification-divider" />
+                            <div class="notification-list">
+                                @if (NotificationClient.Notifications.Count == 0)
+                                {
+                                    <div class="notification-empty">
+                                        <div class="notification-empty-icon">
+                                            <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone" Size="Size.Medium" />
+                                        </div>
+                                        <p class="notification-empty-title">You're all caught up</p>
+                                        <p class="notification-empty-text">No unread notifications right now</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var item in NotificationClient.Notifications.Take(20))
+                                    {
+                                        <button type="button"
+                                                class="notification-item"
+                                                @onclick="() => NotificationClient.MarkReadAsync(item.Id)">
+                                            <span class="@($"notification-item-icon notification-item-icon--{item.Type.ToLowerInvariant()}")">
+                                                <MudIcon Icon="@NotificationIcon(item.Type)" Size="Size.Small" />
+                                            </span>
+                                            <span class="notification-item-body">
+                                                <strong class="notification-item-title">@item.Title</strong>
+                                                <span class="notification-item-message">@item.Message</span>
+                                                <time class="notification-item-time">@item.CreatedAt.ToLocalTime().ToString("g")</time>
+                                            </span>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </ChildContent>
+                    </MudMenu>
+                    }
                     <MudMenu AnchorOrigin="Origin.BottomRight"
                              TransformOrigin="Origin.TopRight"
                              PopoverClass="profile-menu-panel">
@@ -101,6 +169,7 @@
 @code {
     private bool _drawerOpen = true;
     private string _pageTitle = "Dashboard";
+    private bool _notificationsInitialized;
 
     private readonly MudTheme _theme = new()
     {
@@ -149,8 +218,32 @@
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += OnLocationChanged;
+        NotificationClient.StateChanged += OnNotificationStateChanged;
         _pageTitle = ResolveTitle(Navigation.Uri);
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_notificationsInitialized)
+        {
+            _notificationsInitialized = true;
+            var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            await NotificationClient.InitializeAsync(state.User);
+        }
+    }
+
+    private void OnNotificationStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private string BadgeText => NotificationClient.UnreadCount > 99 ? "99+" : NotificationClient.UnreadCount.ToString();
+    private static bool CanReceiveNotifications(System.Security.Claims.ClaimsPrincipal user) =>
+        GetRole(user) is global::Shared.Constants.RoleNames.Librarian or global::Shared.Constants.RoleNames.LibraryMember;
+    private static string NotificationIcon(string type) => type switch
+    {
+        "Borrowed" => Icons.Material.Outlined.MenuBook,
+        "Returned" => Icons.Material.Outlined.AssignmentReturned,
+        "DueSoon" => Icons.Material.Outlined.Schedule,
+        "Overdue" => Icons.Material.Outlined.WarningAmber,
+        _ => Icons.Material.Outlined.Notifications
+    };
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
@@ -199,8 +292,10 @@
         return string.IsNullOrWhiteSpace(email) ? "?" : email[0].ToString().ToUpperInvariant();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        NotificationClient.StateChanged -= OnNotificationStateChanged;
+        await NotificationClient.DisposeAsync();
     }
 }

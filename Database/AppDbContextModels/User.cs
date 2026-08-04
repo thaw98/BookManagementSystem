@@ -11,4 +11,5 @@ public sealed class User : AuditableEntity
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<BookBorrowRecord> BookBorrowRecords { get; set; }
     = new List<BookBorrowRecord>();
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

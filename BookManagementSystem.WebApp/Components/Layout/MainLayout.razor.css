@@ -1,1 +1,2 @@
-/* Layout styles live in wwwroot/app.css for the BMS shell. */
+/* Layout and notification panel styles live in wwwroot/app.css
+   so MudBlazor popovers (portaled outside this component) receive them. */

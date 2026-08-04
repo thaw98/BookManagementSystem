@@ -13,6 +13,7 @@ using Shared.Base;
 using Microsoft.AspNetCore.Authorization;
 using System.Reflection;
 using Xunit;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BookManagementSystem.Tests;
 
@@ -158,7 +159,7 @@ public sealed class AuthAndAuditTests
     public async Task Rejected_operation_produces_no_entity_or_audit_event()
     {
         await using var fixture = await TestDatabase.CreateAsync();
-        var result = await new AuthorService(fixture.Db).CreateAsync(
+        var result = await new AuthorService(fixture.Db, NullLogger<AuthorService>.Instance).CreateAsync(
             new CreateAuthorRequest { Name = "   " }, default);
 
         Assert.False(result.IsSuccess);

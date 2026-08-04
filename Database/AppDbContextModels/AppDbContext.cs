@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<BookBorrowRecord> BookBorrowRecords
     => Set<BookBorrowRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

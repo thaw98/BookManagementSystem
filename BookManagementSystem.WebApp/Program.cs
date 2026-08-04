@@ -29,6 +29,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TokenStorageService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ApiClient>();
+builder.Services.AddScoped<NotificationClient>();
 builder.Services.AddHttpClient("BmsApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7239");

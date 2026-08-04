@@ -31,6 +31,17 @@ public static class AuthServiceCollectionExtensions
                     IssuerSigningKey = key,
                     ClockSkew = TimeSpan.FromMinutes(1)
                 };
+                jwt.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var token = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(token) &&
+                            context.HttpContext.Request.Path.StartsWithSegments("/hubs/notifications"))
+                            context.Token = token;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         return services;

@@ -15,4 +15,5 @@ public class BookBorrowRecord : AuditableEntity
     public DateTime DueAt { get; set; }
 
     public DateTime? ReturnedAt { get; set; }
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

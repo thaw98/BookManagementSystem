@@ -7,6 +7,7 @@ using BookManagementSystem.Domain.Features.BookFeature;
 using BookManagementSystem.Domain.Features.BorrowFeature;
 using BookManagementSystem.Domain.Features.RoleFeature;
 using BookManagementSystem.Domain.Features.UserFeature;
+using BookManagementSystem.Domain.Features.NotificationFeature;
 using BookManagementSystem.Domain.Seeding;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Base;
@@ -28,6 +29,8 @@ public static class FeatureManager
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<NotificationScanner>();
         services.AddScoped<IDbSeeder, DbSeeder>();
         return services;
     }

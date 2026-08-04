@@ -5,6 +5,7 @@ using Contracts.Auth;
 using Shared.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Text;
 
 namespace WebApp.Services;
 
@@ -47,6 +48,14 @@ public sealed class ApiClient(IHttpClientFactory httpClientFactory, IHttpContext
         return await httpClientFactory.CreateClient("BmsApi").SendAsync(request, cancellationToken);
     }
 
+    public async Task<string?> GetAccessTokenAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        var entry = tokenStorage.Get(sessionId);
+        if (entry is null) return null;
+        if (ExpiresSoon(entry.AccessToken) && !await TryRefreshAsync(sessionId, cancellationToken)) return null;
+        return tokenStorage.Get(sessionId)?.AccessToken;
+    }
+
     private async Task<bool> TryRefreshAsync(CancellationToken cancellationToken)
     {
         var context = httpContextAccessor.HttpContext;
@@ -54,6 +63,12 @@ public sealed class ApiClient(IHttpClientFactory httpClientFactory, IHttpContext
         if (string.IsNullOrWhiteSpace(sessionId))
             return false;
 
+        return await TryRefreshAsync(sessionId, cancellationToken);
+    }
+
+    private async Task<bool> TryRefreshAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        var context = httpContextAccessor.HttpContext;
         var gate = tokenStorage.GetRefreshLock(sessionId);
         await gate.WaitAsync(cancellationToken);
         try
@@ -61,6 +76,8 @@ public sealed class ApiClient(IHttpClientFactory httpClientFactory, IHttpContext
             var entry = tokenStorage.Get(sessionId);
             if (entry is null)
                 return false;
+            if (!ExpiresSoon(entry.AccessToken))
+                return true;
 
             var response = await httpClientFactory.CreateClient("BmsApi")
                 .PostAsJsonAsync("api/Auth/Refresh", new RefreshRequest { RefreshToken = entry.RefreshToken }, cancellationToken);
@@ -80,5 +97,18 @@ public sealed class ApiClient(IHttpClientFactory httpClientFactory, IHttpContext
         {
             gate.Release();
         }
+    }
+
+    private static bool ExpiresSoon(string jwt)
+    {
+        try
+        {
+            var part = jwt.Split('.')[1].Replace('-', '+').Replace('_', '/');
+            part = part.PadRight(part.Length + (4 - part.Length % 4) % 4, '=');
+            using var json = JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(part)));
+            return !json.RootElement.TryGetProperty("exp", out var exp) ||
+                DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64()) <= DateTimeOffset.UtcNow.AddMinutes(1);
+        }
+        catch { return true; }
     }
 }

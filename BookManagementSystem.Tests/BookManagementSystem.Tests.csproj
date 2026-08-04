@@ -20,5 +20,6 @@
     <ProjectReference Include="..\Database\Database.csproj" />
     <ProjectReference Include="..\Contracts\Contracts.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\BookManagementSystem.Api\BookManagementSystem.Api.csproj" />
   </ItemGroup>
 </Project>

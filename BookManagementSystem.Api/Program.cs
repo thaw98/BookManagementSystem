@@ -9,6 +9,9 @@ using Microsoft.OpenApi.Models;
 using Shared.Auth;
 using Shared.Middlewares;
 using Serilog;
+using BookManagementSystem.Api.Notifications;
+using BookManagementSystem.Domain.Features.NotificationFeature;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +35,11 @@ builder.Services.AddProblemDetails();
 builder.Services.AddDomainFeatures();
 builder.Services.AddBmsJwtAuthentication(builder.Configuration);
 builder.Services.AddPermissionPolicies();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, NotificationUserIdProvider>();
+builder.Services.AddSingleton<INotificationDispatcher, SignalRNotificationDispatcher>();
+builder.Services.Configure<NotificationWorkerOptions>(builder.Configuration.GetSection("Notifications"));
+builder.Services.AddHostedService<NotificationWorker>();
 
 builder.Services.AddControllers()
     .AddApplicationPart(Assembly.Load("BookManagementSystem.Domain"));
@@ -83,5 +91,6 @@ app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
